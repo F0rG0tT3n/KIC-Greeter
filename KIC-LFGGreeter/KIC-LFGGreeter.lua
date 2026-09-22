@@ -29,9 +29,14 @@ local function SendGreeting(expectedGeneration)
         return
     end
 
-    -- Mark the group before sending so repeated events cannot duplicate the
-    -- greeting, even if the client rejects chat while restrictions are active.
+    -- The GROUP_FORMED and GROUP_JOINED events are not sufficient to tell who
+    -- initiated the party. At this point the roster has settled: if the player
+    -- is the leader, their invitation created the group, so stay silent.
     greetedCurrentGroup = true
+
+    if UnitIsGroupLeader("player") then
+        return
+    end
 
     if IsChatMessagingLocked() then
         return
@@ -65,13 +70,6 @@ events:SetScript("OnEvent", function(_, event)
 
     if event == "GROUP_LEFT" then
         greetedCurrentGroup = false
-        return
-    end
-
-    if event == "GROUP_FORMED" then
-        -- This player created the group by inviting someone. Suppress the
-        -- greeting even if the client also reports a join-related event.
-        greetedCurrentGroup = true
         return
     end
 
