@@ -8,7 +8,7 @@ local WINDOW_HEIGHT = 620
 local LIST_WIDTH = 642
 local ROW_HEIGHT = 30
 local ROW_GAP = 2
-local DEFAULT_MAX_GROUP_SIZE = 5
+local DEFAULT_MAX_GROUP_SIZE = 4
 local MAX_GROUP_SIZE = 40
 local TAB_JOIN = "JOIN"
 local TAB_TIMED = "TIMED"
@@ -70,6 +70,18 @@ local function GetActiveList()
     local config = TAB_CONFIG[activeTab]
 
     return db and db[config.listKey], config
+end
+
+local function UpdateRowEnabledAppearance(row, enabled)
+    if enabled then
+        row.DisabledOverlay:Hide()
+        row.Number:SetTextColor(1, 0.82, 0, 1)
+        row.Text:SetTextColor(1, 1, 1, 1)
+    else
+        row.DisabledOverlay:Show()
+        row.Number:SetTextColor(0.52, 0.52, 0.52, 1)
+        row.Text:SetTextColor(0.58, 0.58, 0.58, 1)
+    end
 end
 
 local function StopEditingRow(row, save)
@@ -137,6 +149,12 @@ local function CreateGreetingRow(index)
     background:SetAllPoints()
     row.Background = background
 
+    local disabledOverlay = row:CreateTexture(nil, "ARTWORK")
+    disabledOverlay:SetAllPoints()
+    disabledOverlay:SetColorTexture(0.34, 0.34, 0.34, 0.38)
+    disabledOverlay:Hide()
+    row.DisabledOverlay = disabledOverlay
+
     local number = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     number:SetPoint("LEFT", row, "LEFT", 8, 0)
     number:SetWidth(30)
@@ -182,7 +200,9 @@ local function CreateGreetingRow(index)
         local entry = entries and entries[row.EntryIndex]
 
         if entry then
-            entry.enabled = self:GetChecked() and true or false
+            local enabled = self:GetChecked() and true or false
+            entry.enabled = enabled
+            UpdateRowEnabledAppearance(row, enabled)
             UpdateStatus()
         end
     end)
@@ -265,6 +285,7 @@ function UI.Refresh()
         row.Toggle.EntryIndex = index
         row.Toggle:SetChecked(entry.enabled)
         row.Remove.EntryIndex = index
+        UpdateRowEnabledAppearance(row, entry.enabled)
         row:Show()
     end
 
@@ -449,7 +470,7 @@ local function CreateOptionsFrame()
 
     RestoreWindowPosition()
 
-    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -15)
     title:SetText("KIC LFG Greeter")
 

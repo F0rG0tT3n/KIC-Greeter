@@ -32,8 +32,9 @@ custom message with the text field at the bottom. If every message in a tab is
 disabled or removed, that feature stays silent.
 
 On the **Join Greetings** tab, the **Maximum group size** field counts every
-group member, including you. For example, a value of `5` allows greetings in
-groups with up to five members and suppresses them in groups of six or more.
+group member, including you. Its clean-install default is `4`, which allows
+greetings in groups with up to four members and suppresses them in groups of
+five or more.
 Values are limited to the range 1–40. This limit does not apply to timed
 Mythic+ completion messages.
 

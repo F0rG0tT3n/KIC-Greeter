@@ -2,7 +2,7 @@
 ## Title: KIC LFG Greeter
 ## Notes: Sends configurable group greetings for parties and Mythic+ outcomes.
 ## Author: KIC
-## Version: 0.8.0
+## Version: 0.8.1
 ## Group: KIC
 ## RequiredDeps: KIC
 ## SavedVariables: KICLFGGreeterDB
