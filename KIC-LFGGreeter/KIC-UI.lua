@@ -4,21 +4,42 @@ local UI = {}
 KIC.UI = UI
 
 local WINDOW_WIDTH = 700
-local WINDOW_HEIGHT = 580
+local WINDOW_HEIGHT = 620
 local LIST_WIDTH = 642
 local ROW_HEIGHT = 30
 local ROW_GAP = 2
 local DEFAULT_MAX_GROUP_SIZE = 5
 local MAX_GROUP_SIZE = 40
+local TAB_JOIN = "JOIN"
+local TAB_TIMED = "TIMED"
+
+local TAB_CONFIG = {
+    [TAB_JOIN] = {
+        listKey = "greetings",
+        addLabel = "New join greeting",
+        statusLabel = "Enabled join greetings",
+    },
+    [TAB_TIMED] = {
+        listKey = "timedGreetings",
+        addLabel = "New timed completion message",
+        statusLabel = "Enabled timed messages",
+    },
+}
 
 local initialized = false
+local activeTab = TAB_JOIN
 local optionsFrame
 local minimapButton
 local scrollFrame
 local scrollChild
 local statusText
 local addInput
+local addLabel
 local maxGroupInput
+local maxGroupLabel
+local maxGroupHelp
+local timedHelp
+local tabButtons = {}
 local rows = {}
 local editingRow
 
@@ -36,6 +57,13 @@ local function GetDatabase()
     return KIC.GetDatabase and KIC.GetDatabase()
 end
 
+local function GetActiveList()
+    local db = GetDatabase()
+    local config = TAB_CONFIG[activeTab]
+
+    return db and db[config.listKey], config
+end
+
 local function StopEditingRow(row, save)
     if not row or not row.Editing then
         return true
@@ -45,12 +73,13 @@ local function StopEditingRow(row, save)
         local text = Trim(row.EditBox:GetText())
 
         if text == "" then
-            Notify("A greeting cannot be empty.")
+            Notify("A message cannot be empty.")
             return false
         end
 
         local db = GetDatabase()
-        local entry = db and db.greetings[row.EntryIndex]
+        local entries = db and db[row.ListKey]
+        local entry = entries and entries[row.EntryIndex]
 
         if entry then
             entry.text = text
@@ -75,19 +104,20 @@ local function UpdateStatus()
         return
     end
 
-    local db = GetDatabase()
+    local entries, config = GetActiveList()
     local enabled = 0
 
-    for _, entry in ipairs(db.greetings) do
+    for _, entry in ipairs(entries) do
         if entry.enabled then
             enabled = enabled + 1
         end
     end
 
     statusText:SetText(string.format(
-        "Enabled greetings: %d / %d",
+        "%s: %d / %d",
+        config.statusLabel,
         enabled,
-        #db.greetings
+        #entries
     ))
 end
 
@@ -140,7 +170,8 @@ local function CreateGreetingRow(index)
 
     toggle:SetScript("OnClick", function(self)
         local db = GetDatabase()
-        local entry = db and db.greetings[self.EntryIndex]
+        local entries = db and db[row.ListKey]
+        local entry = entries and entries[row.EntryIndex]
 
         if entry then
             entry.enabled = self:GetChecked() and true or false
@@ -150,7 +181,7 @@ local function CreateGreetingRow(index)
 
     toggle:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Use this greeting")
+        GameTooltip:SetText("Use this message")
         GameTooltip:Show()
     end)
     toggle:SetScript("OnLeave", GameTooltip_Hide)
@@ -186,9 +217,10 @@ local function CreateGreetingRow(index)
 
     remove:SetScript("OnClick", function(self)
         local db = GetDatabase()
+        local entries = db and db[row.ListKey]
 
-        if db and db.greetings[self.EntryIndex] then
-            table.remove(db.greetings, self.EntryIndex)
+        if entries and entries[row.EntryIndex] then
+            table.remove(entries, row.EntryIndex)
             UI.Refresh()
         end
     end)
@@ -203,13 +235,14 @@ function UI.Refresh()
     end
 
     local db = GetDatabase()
+    local entries, config = GetActiveList()
 
     for _, row in ipairs(rows) do
         StopEditingRow(row, false)
         row:Hide()
     end
 
-    for index, entry in ipairs(db.greetings) do
+    for index, entry in ipairs(entries) do
         local row = rows[index] or CreateGreetingRow(index)
         local y = -((index - 1) * (ROW_HEIGHT + ROW_GAP))
         local shade = index % 2 == 0 and 0.11 or 0.07
@@ -220,14 +253,38 @@ function UI.Refresh()
         row.Number:SetText(index .. ".")
         row.Text:SetText(entry.text)
         row.EntryIndex = index
+        row.ListKey = config.listKey
         row.Toggle.EntryIndex = index
         row.Toggle:SetChecked(entry.enabled)
         row.Remove.EntryIndex = index
         row:Show()
     end
 
-    local contentHeight = #db.greetings * (ROW_HEIGHT + ROW_GAP)
+    local contentHeight = #entries * (ROW_HEIGHT + ROW_GAP)
     scrollChild:SetHeight(math.max(1, contentHeight))
+
+    if activeTab == TAB_JOIN then
+        maxGroupLabel:Show()
+        maxGroupInput:Show()
+        maxGroupHelp:Show()
+        timedHelp:Hide()
+        maxGroupInput:SetText(tostring(db.maxGroupSize))
+    else
+        maxGroupLabel:Hide()
+        maxGroupInput:Hide()
+        maxGroupHelp:Hide()
+        timedHelp:Show()
+    end
+
+    for tabKey, button in pairs(tabButtons) do
+        if tabKey == activeTab then
+            button:Disable()
+        else
+            button:Enable()
+        end
+    end
+
+    addLabel:SetText(config.addLabel)
     UpdateStatus()
 end
 
@@ -256,12 +313,12 @@ local function AddGreeting()
     local text = Trim(addInput and addInput:GetText())
 
     if text == "" then
-        Notify("Enter a greeting before adding it.")
+        Notify("Enter a message before adding it.")
         return
     end
 
-    local db = GetDatabase()
-    db.greetings[#db.greetings + 1] = {
+    local entries = GetActiveList()
+    entries[#entries + 1] = {
         text = text,
         enabled = true,
     }
@@ -277,6 +334,30 @@ local function AddGreeting()
             end
         end)
     end
+end
+
+local function SelectTab(tabKey)
+    if not TAB_CONFIG[tabKey] or tabKey == activeTab then
+        return
+    end
+
+    if activeTab == TAB_JOIN then
+        CommitMaxGroupSize()
+    end
+
+    if editingRow then
+        StopEditingRow(editingRow, false)
+    end
+
+    activeTab = tabKey
+    addInput:SetText("")
+    addInput:ClearFocus()
+
+    if scrollFrame then
+        scrollFrame:SetVerticalScroll(0)
+    end
+
+    UI.Refresh()
 end
 
 local function SaveWindowPosition()
@@ -365,14 +446,32 @@ local function CreateOptionsFrame()
 
     local subtitle = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
-    subtitle:SetText("Choose which greetings may be sent when you join a party.")
+    subtitle:SetText("Configure automatic group chat messages.")
     subtitle:SetTextColor(0.72, 0.72, 0.72)
 
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
 
-    local maxGroupLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    maxGroupLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -65)
+    local joinTab = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    joinTab:SetSize(132, 24)
+    joinTab:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -61)
+    joinTab:SetText("Join Greetings")
+    joinTab:SetScript("OnClick", function()
+        SelectTab(TAB_JOIN)
+    end)
+    tabButtons[TAB_JOIN] = joinTab
+
+    local timedTab = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    timedTab:SetSize(142, 24)
+    timedTab:SetPoint("LEFT", joinTab, "RIGHT", 6, 0)
+    timedTab:SetText("Timed Mythic+")
+    timedTab:SetScript("OnClick", function()
+        SelectTab(TAB_TIMED)
+    end)
+    tabButtons[TAB_TIMED] = timedTab
+
+    maxGroupLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    maxGroupLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -103)
     maxGroupLabel:SetText("Maximum group size:")
 
     maxGroupInput = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
@@ -388,14 +487,22 @@ local function CreateOptionsFrame()
     end)
     maxGroupInput:SetScript("OnEditFocusLost", CommitMaxGroupSize)
 
-    local maxGroupHelp = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    maxGroupHelp = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     maxGroupHelp:SetPoint("LEFT", maxGroupInput, "RIGHT", 10, 0)
     maxGroupHelp:SetText("Greet only when the total member count is at or below this value.")
     maxGroupHelp:SetTextColor(0.72, 0.72, 0.72)
 
+    timedHelp = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    timedHelp:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -105)
+    timedHelp:SetText(
+        "Sent only when a Mythic+ keystone dungeon is completed within its time limit."
+    )
+    timedHelp:SetTextColor(0.72, 0.72, 0.72)
+    timedHelp:Hide()
+
     local header = CreateFrame("Frame", nil, frame)
     header:SetSize(LIST_WIDTH, 22)
-    header:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -101)
+    header:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -137)
 
     local numberHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     numberHeader:SetPoint("LEFT", header, "LEFT", 8, 0)
@@ -405,7 +512,7 @@ local function CreateOptionsFrame()
 
     local textHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     textHeader:SetPoint("LEFT", numberHeader, "RIGHT", 8, 0)
-    textHeader:SetText("Greeting")
+    textHeader:SetText("Message")
 
     local editHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     editHeader:SetPoint("RIGHT", header, "RIGHT", -121, 0)
@@ -432,9 +539,9 @@ local function CreateOptionsFrame()
     scrollChild:SetSize(LIST_WIDTH, 1)
     scrollFrame:SetScrollChild(scrollChild)
 
-    local addLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    addLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     addLabel:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 18, 78)
-    addLabel:SetText("New greeting")
+    addLabel:SetText("New join greeting")
 
     addInput = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
     addInput:SetSize(550, 24)

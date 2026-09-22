@@ -22,3 +22,7 @@ KIC.DEFAULT_GREETINGS = {
     "May this meeting be the start of something wonderful.",
     "As the sun greets the morning, so I greet you.",
 }
+
+KIC.DEFAULT_TIMED_GREETINGS = {
+    "GG",
+}

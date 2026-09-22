@@ -1,8 +1,8 @@
 ## Interface: 120100
 ## Title: KIC LFG Greeter
-## Notes: Greets newly joined parties with a configurable random message.
+## Notes: Sends configurable greetings for joined parties and timed Mythic+ runs.
 ## Author: KIC
-## Version: 0.4.0
+## Version: 0.5.0
 ## SavedVariables: KICLFGGreeterDB
 
 KIC-Data.lua

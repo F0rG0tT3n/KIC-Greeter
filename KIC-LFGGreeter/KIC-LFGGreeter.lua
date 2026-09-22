@@ -1,6 +1,9 @@
 local _, KIC = ...
 
 local GREETING_DELAY_SECONDS = 1
+local TIMED_GREETING_DELAY_SECONDS = 1
+local CHAT_UNLOCK_RETRY_SECONDS = 0.5
+local CHAT_UNLOCK_MAX_ATTEMPTS = 10
 local DEFAULT_MAX_GROUP_SIZE = 5
 local MAX_GROUP_SIZE = 40
 
@@ -8,24 +11,25 @@ local DB
 local loggedIn = false
 local greetedCurrentGroup = false
 local groupGeneration = 0
+local completionGeneration = 0
 
-local function CopyDefaultGreetings()
-    local greetings = {}
+local function CopyDefaultMessages(defaults)
+    local messages = {}
 
-    for _, text in ipairs(KIC.DEFAULT_GREETINGS) do
-        greetings[#greetings + 1] = {
+    for _, text in ipairs(defaults) do
+        messages[#messages + 1] = {
             text = text,
             enabled = true,
         }
     end
 
-    return greetings
+    return messages
 end
 
-local function NormalizeGreetings(greetings)
+local function NormalizeMessages(messages)
     local normalized = {}
 
-    for _, entry in ipairs(greetings) do
+    for _, entry in ipairs(messages) do
         local text
         local enabled = true
 
@@ -47,7 +51,6 @@ local function NormalizeGreetings(greetings)
     return normalized
 end
 
-
 local function InitializeDatabase()
     if type(KICLFGGreeterDB) ~= "table" then
         KICLFGGreeterDB = {}
@@ -56,9 +59,15 @@ local function InitializeDatabase()
     DB = KICLFGGreeterDB
 
     if type(DB.greetings) ~= "table" then
-        DB.greetings = CopyDefaultGreetings()
+        DB.greetings = CopyDefaultMessages(KIC.DEFAULT_GREETINGS)
     else
-        DB.greetings = NormalizeGreetings(DB.greetings)
+        DB.greetings = NormalizeMessages(DB.greetings)
+    end
+
+    if type(DB.timedGreetings) ~= "table" then
+        DB.timedGreetings = CopyDefaultMessages(KIC.DEFAULT_TIMED_GREETINGS)
+    else
+        DB.timedGreetings = NormalizeMessages(DB.timedGreetings)
     end
 
     if type(DB.window) ~= "table" then
@@ -76,16 +85,16 @@ function KIC.GetDatabase()
     return DB
 end
 
-local function GetEnabledGreetings()
-    local greetings = {}
+local function GetEnabledMessages(messages)
+    local enabledMessages = {}
 
-    for _, entry in ipairs(DB.greetings) do
+    for _, entry in ipairs(messages) do
         if entry.enabled and type(entry.text) == "string" then
-            greetings[#greetings + 1] = entry.text
+            enabledMessages[#enabledMessages + 1] = entry.text
         end
     end
 
-    return greetings
+    return enabledMessages
 end
 
 local function IsChatMessagingLocked()
@@ -102,6 +111,15 @@ local function GetGroupChatType()
     end
 
     return "PARTY"
+end
+
+local function SendGroupChatMessage(message)
+    if C_ChatInfo and C_ChatInfo.SendChatMessage then
+        C_ChatInfo.SendChatMessage(message, GetGroupChatType())
+    elseif SendChatMessage then
+        -- Compatibility fallback for older Retail clients.
+        SendChatMessage(message, GetGroupChatType())
+    end
 end
 
 local function SendGreeting(expectedGeneration)
@@ -127,7 +145,7 @@ local function SendGreeting(expectedGeneration)
         return
     end
 
-    local greetings = GetEnabledGreetings()
+    local greetings = GetEnabledMessages(DB.greetings)
 
     if #greetings == 0 then
         return
@@ -135,11 +153,59 @@ local function SendGreeting(expectedGeneration)
 
     local greeting = greetings[math.random(#greetings)]
 
-    if C_ChatInfo and C_ChatInfo.SendChatMessage then
-        C_ChatInfo.SendChatMessage(greeting, GetGroupChatType())
-    elseif SendChatMessage then
-        -- Compatibility fallback for older Retail clients.
-        SendChatMessage(greeting, GetGroupChatType())
+    SendGroupChatMessage(greeting)
+end
+
+local function SendTimedGreeting(expectedGeneration, attempt)
+    if expectedGeneration ~= completionGeneration then
+        return
+    end
+
+    if IsChatMessagingLocked() then
+        if attempt < CHAT_UNLOCK_MAX_ATTEMPTS and C_Timer and C_Timer.After then
+            C_Timer.After(CHAT_UNLOCK_RETRY_SECONDS, function()
+                SendTimedGreeting(expectedGeneration, attempt + 1)
+            end)
+        end
+
+        return
+    end
+
+    if not IsInGroup() then
+        return
+    end
+
+    local greetings = GetEnabledMessages(DB.timedGreetings)
+
+    if #greetings == 0 then
+        return
+    end
+
+    SendGroupChatMessage(greetings[math.random(#greetings)])
+end
+
+local function HandleChallengeModeCompleted()
+    if not C_ChallengeMode
+        or not C_ChallengeMode.GetChallengeCompletionInfo
+    then
+        return
+    end
+
+    local info = C_ChallengeMode.GetChallengeCompletionInfo()
+
+    if not info or not info.onTime or info.practiceRun then
+        return
+    end
+
+    completionGeneration = completionGeneration + 1
+    local expectedGeneration = completionGeneration
+
+    if C_Timer and C_Timer.After then
+        C_Timer.After(TIMED_GREETING_DELAY_SECONDS, function()
+            SendTimedGreeting(expectedGeneration, 0)
+        end)
+    else
+        SendTimedGreeting(expectedGeneration, CHAT_UNLOCK_MAX_ATTEMPTS)
     end
 end
 
@@ -148,6 +214,7 @@ events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("GROUP_FORMED")
 events:RegisterEvent("GROUP_JOINED")
 events:RegisterEvent("GROUP_LEFT")
+events:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 
 events:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then
@@ -166,7 +233,13 @@ events:SetScript("OnEvent", function(_, event)
         return
     end
 
+    if event == "CHALLENGE_MODE_COMPLETED" then
+        HandleChallengeModeCompleted()
+        return
+    end
+
     groupGeneration = groupGeneration + 1
+    completionGeneration = completionGeneration + 1
 
     if event == "GROUP_LEFT" then
         greetedCurrentGroup = false

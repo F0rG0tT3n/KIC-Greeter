@@ -1,33 +1,39 @@
 # KIC LFG Greeter
 
-A World of Warcraft Retail addon that greets a newly joined party with a
-randomly selected, configurable message.
+A World of Warcraft Retail addon that sends configurable random messages when
+you join a party and when a Mythic+ keystone dungeon is completed in time.
 
 ## Behavior
 
-- Sends exactly one randomly selected greeting when you join an existing
-  five-player group.
+- Sends exactly one randomly selected greeting when you join an existing group
+  whose member count is at or below your configured maximum.
 - Does not greet when your invitation causes a group to be formed and makes
   you the party leader.
-- Uses instance chat for matchmade instance groups and party chat otherwise.
+- Uses instance chat for matchmade instance groups, raid chat for raids, and
+  party chat otherwise.
 - Does not greet when reloading the UI while already grouped.
 - Does not send during WoW's chat messaging lockdown.
-- Does not greet raids.
-- Provides a draggable minimap button that opens the greeting editor.
-- Saves enabled states, custom greetings, removals, and window positions.
-- Applies an inclusive, configurable maximum group size before greeting.
+- Sends one random enabled timed-completion message after a Mythic+ dungeon is
+  completed within its time limit. Depleted keys and practice runs stay silent.
+- Briefly retries the timed-completion message if chat is still locked when the
+  completion event fires.
+- Provides a draggable minimap button that opens the message editor.
+- Saves enabled states, custom messages, removals, and window positions.
 
-## Greeting editor
+## Message editor
 
 Click the gold **G** button on the minimap or type `/kicgreet` to open the
-editor. Each row has a number, greeting text, **Edit** and **Remove** buttons,
-and a **Use** checkbox. Add a custom greeting with the text field at the
-bottom. If every greeting is disabled or removed, the addon stays silent.
+editor. Use the **Join Greetings** and **Timed Mythic+** tabs to maintain each
+message list independently. Every row has a number, message text, **Edit** and
+**Remove** buttons, and a **Use** checkbox. Add a custom message with the text
+field at the bottom. If every message in a tab is disabled or removed, that
+feature stays silent.
 
-The **Maximum group size** field at the top counts every group member,
-including you. For example, a value of `5` allows greetings in groups with up
-to five members and suppresses them in groups of six or more. Values are
-limited to the range 1–40.
+On the **Join Greetings** tab, the **Maximum group size** field counts every
+group member, including you. For example, a value of `5` allows greetings in
+groups with up to five members and suppresses them in groups of six or more.
+Values are limited to the range 1–40. This limit does not apply to timed
+Mythic+ completion messages.
 
 ## Install
 
@@ -43,5 +49,6 @@ AddOns list.
 ## Testing
 
 Join another player's party while the addon is enabled. About one second after
-joining, the addon sends one of the enabled greetings to the group's chat
-channel.
+joining, the addon sends one of the enabled join greetings to the group's chat
+channel. Complete a Mythic+ dungeon within its time limit to test the separate
+timed-completion message list, whose default message is `GG`.
