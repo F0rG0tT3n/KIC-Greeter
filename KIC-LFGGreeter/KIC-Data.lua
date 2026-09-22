@@ -26,3 +26,7 @@ KIC.DEFAULT_GREETINGS = {
 KIC.DEFAULT_TIMED_GREETINGS = {
     "GG",
 }
+
+KIC.DEFAULT_ABANDON_GREETINGS = {
+    "Thanks for the run.",
+}

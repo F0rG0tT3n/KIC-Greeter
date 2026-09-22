@@ -1,7 +1,7 @@
 # KIC LFG Greeter
 
 A World of Warcraft Retail addon that sends configurable random messages when
-you join a party and when a Mythic+ keystone dungeon is completed in time.
+you join a party, time a Mythic+ keystone, or successfully Vote to Abandon one.
 
 ## Behavior
 
@@ -15,19 +15,21 @@ you join a party and when a Mythic+ keystone dungeon is completed in time.
 - Does not send during WoW's chat messaging lockdown.
 - Sends one random enabled timed-completion message after a Mythic+ dungeon is
   completed within its time limit. Depleted keys and practice runs stay silent.
-- Briefly retries the timed-completion message if chat is still locked when the
-  completion event fires.
+- Briefly retries Mythic+ outcome messages if chat is still locked when the
+  relevant event fires.
+- Sends one random enabled abandon message only when a Mythic+ Vote to Abandon
+  succeeds. Failed votes stay silent.
 - Provides a draggable minimap button that opens the message editor.
 - Saves enabled states, custom messages, removals, and window positions.
 
 ## Message editor
 
 Click the gold **G** button on the minimap or type `/kicgreet` to open the
-editor. Use the **Join Greetings** and **Timed Mythic+** tabs to maintain each
-message list independently. Every row has a number, message text, **Edit** and
-**Remove** buttons, and a **Use** checkbox. Add a custom message with the text
-field at the bottom. If every message in a tab is disabled or removed, that
-feature stays silent.
+editor. Use the **Join Greetings**, **Timed Mythic+**, and **Abandoned Mythic+**
+tabs to maintain each message list independently. Every row has a number,
+message text, **Edit** and **Remove** buttons, and a **Use** checkbox. Add a
+custom message with the text field at the bottom. If every message in a tab is
+disabled or removed, that feature stays silent.
 
 On the **Join Greetings** tab, the **Maximum group size** field counts every
 group member, including you. For example, a value of `5` allows greetings in
@@ -51,4 +53,5 @@ AddOns list.
 Join another player's party while the addon is enabled. About one second after
 joining, the addon sends one of the enabled join greetings to the group's chat
 channel. Complete a Mythic+ dungeon within its time limit to test the separate
-timed-completion message list, whose default message is `GG`.
+timed-completion message list, whose default message is `GG`. A successful Vote
+to Abandon uses its own list, whose default message is `Thanks for the run.`

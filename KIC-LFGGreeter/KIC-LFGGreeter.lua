@@ -1,7 +1,7 @@
 local _, KIC = ...
 
 local GREETING_DELAY_SECONDS = 1
-local TIMED_GREETING_DELAY_SECONDS = 1
+local OUTCOME_GREETING_DELAY_SECONDS = 1
 local CHAT_UNLOCK_RETRY_SECONDS = 0.5
 local CHAT_UNLOCK_MAX_ATTEMPTS = 10
 local DEFAULT_MAX_GROUP_SIZE = 5
@@ -11,7 +11,10 @@ local DB
 local loggedIn = false
 local greetedCurrentGroup = false
 local groupGeneration = 0
-local completionGeneration = 0
+local outcomeGenerations = {
+    timedGreetings = 0,
+    abandonGreetings = 0,
+}
 
 local function CopyDefaultMessages(defaults)
     local messages = {}
@@ -68,6 +71,12 @@ local function InitializeDatabase()
         DB.timedGreetings = CopyDefaultMessages(KIC.DEFAULT_TIMED_GREETINGS)
     else
         DB.timedGreetings = NormalizeMessages(DB.timedGreetings)
+    end
+
+    if type(DB.abandonGreetings) ~= "table" then
+        DB.abandonGreetings = CopyDefaultMessages(KIC.DEFAULT_ABANDON_GREETINGS)
+    else
+        DB.abandonGreetings = NormalizeMessages(DB.abandonGreetings)
     end
 
     if type(DB.window) ~= "table" then
@@ -156,15 +165,15 @@ local function SendGreeting(expectedGeneration)
     SendGroupChatMessage(greeting)
 end
 
-local function SendTimedGreeting(expectedGeneration, attempt)
-    if expectedGeneration ~= completionGeneration then
+local function SendOutcomeGreeting(listKey, expectedGeneration, attempt)
+    if expectedGeneration ~= outcomeGenerations[listKey] then
         return
     end
 
     if IsChatMessagingLocked() then
         if attempt < CHAT_UNLOCK_MAX_ATTEMPTS and C_Timer and C_Timer.After then
             C_Timer.After(CHAT_UNLOCK_RETRY_SECONDS, function()
-                SendTimedGreeting(expectedGeneration, attempt + 1)
+                SendOutcomeGreeting(listKey, expectedGeneration, attempt + 1)
             end)
         end
 
@@ -175,13 +184,30 @@ local function SendTimedGreeting(expectedGeneration, attempt)
         return
     end
 
-    local greetings = GetEnabledMessages(DB.timedGreetings)
+    local greetings = GetEnabledMessages(DB[listKey])
 
     if #greetings == 0 then
         return
     end
 
     SendGroupChatMessage(greetings[math.random(#greetings)])
+end
+
+local function QueueOutcomeGreeting(listKey)
+    outcomeGenerations[listKey] = outcomeGenerations[listKey] + 1
+    local expectedGeneration = outcomeGenerations[listKey]
+
+    if C_Timer and C_Timer.After then
+        C_Timer.After(OUTCOME_GREETING_DELAY_SECONDS, function()
+            SendOutcomeGreeting(listKey, expectedGeneration, 0)
+        end)
+    else
+        SendOutcomeGreeting(
+            listKey,
+            expectedGeneration,
+            CHAT_UNLOCK_MAX_ATTEMPTS
+        )
+    end
 end
 
 local function HandleChallengeModeCompleted()
@@ -197,15 +223,12 @@ local function HandleChallengeModeCompleted()
         return
     end
 
-    completionGeneration = completionGeneration + 1
-    local expectedGeneration = completionGeneration
+    QueueOutcomeGreeting("timedGreetings")
+end
 
-    if C_Timer and C_Timer.After then
-        C_Timer.After(TIMED_GREETING_DELAY_SECONDS, function()
-            SendTimedGreeting(expectedGeneration, 0)
-        end)
-    else
-        SendTimedGreeting(expectedGeneration, CHAT_UNLOCK_MAX_ATTEMPTS)
+local function HandleInstanceAbandonVoteFinished(votePassed)
+    if votePassed then
+        QueueOutcomeGreeting("abandonGreetings")
     end
 end
 
@@ -215,8 +238,9 @@ events:RegisterEvent("GROUP_FORMED")
 events:RegisterEvent("GROUP_JOINED")
 events:RegisterEvent("GROUP_LEFT")
 events:RegisterEvent("CHALLENGE_MODE_COMPLETED")
+events:RegisterEvent("INSTANCE_ABANDON_VOTE_FINISHED")
 
-events:SetScript("OnEvent", function(_, event)
+events:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_LOGIN" then
         InitializeDatabase()
         loggedIn = true
@@ -238,8 +262,16 @@ events:SetScript("OnEvent", function(_, event)
         return
     end
 
+    if event == "INSTANCE_ABANDON_VOTE_FINISHED" then
+        HandleInstanceAbandonVoteFinished(...)
+        return
+    end
+
     groupGeneration = groupGeneration + 1
-    completionGeneration = completionGeneration + 1
+
+    for listKey, generation in pairs(outcomeGenerations) do
+        outcomeGenerations[listKey] = generation + 1
+    end
 
     if event == "GROUP_LEFT" then
         greetedCurrentGroup = false

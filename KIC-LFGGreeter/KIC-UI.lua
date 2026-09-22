@@ -12,6 +12,7 @@ local DEFAULT_MAX_GROUP_SIZE = 5
 local MAX_GROUP_SIZE = 40
 local TAB_JOIN = "JOIN"
 local TAB_TIMED = "TIMED"
+local TAB_ABANDON = "ABANDON"
 
 local TAB_CONFIG = {
     [TAB_JOIN] = {
@@ -23,6 +24,13 @@ local TAB_CONFIG = {
         listKey = "timedGreetings",
         addLabel = "New timed completion message",
         statusLabel = "Enabled timed messages",
+        helpText = "Sent only when a Mythic+ keystone dungeon is completed within its time limit.",
+    },
+    [TAB_ABANDON] = {
+        listKey = "abandonGreetings",
+        addLabel = "New successful abandon message",
+        statusLabel = "Enabled abandon messages",
+        helpText = "Sent only after a Mythic+ Vote to Abandon succeeds.",
     },
 }
 
@@ -38,7 +46,7 @@ local addLabel
 local maxGroupInput
 local maxGroupLabel
 local maxGroupHelp
-local timedHelp
+local outcomeHelp
 local tabButtons = {}
 local rows = {}
 local editingRow
@@ -267,13 +275,14 @@ function UI.Refresh()
         maxGroupLabel:Show()
         maxGroupInput:Show()
         maxGroupHelp:Show()
-        timedHelp:Hide()
+        outcomeHelp:Hide()
         maxGroupInput:SetText(tostring(db.maxGroupSize))
     else
         maxGroupLabel:Hide()
         maxGroupInput:Hide()
         maxGroupHelp:Hide()
-        timedHelp:Show()
+        outcomeHelp:SetText(config.helpText)
+        outcomeHelp:Show()
     end
 
     for tabKey, button in pairs(tabButtons) do
@@ -470,6 +479,15 @@ local function CreateOptionsFrame()
     end)
     tabButtons[TAB_TIMED] = timedTab
 
+    local abandonTab = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    abandonTab:SetSize(162, 24)
+    abandonTab:SetPoint("LEFT", timedTab, "RIGHT", 6, 0)
+    abandonTab:SetText("Abandoned Mythic+")
+    abandonTab:SetScript("OnClick", function()
+        SelectTab(TAB_ABANDON)
+    end)
+    tabButtons[TAB_ABANDON] = abandonTab
+
     maxGroupLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     maxGroupLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -103)
     maxGroupLabel:SetText("Maximum group size:")
@@ -492,13 +510,10 @@ local function CreateOptionsFrame()
     maxGroupHelp:SetText("Greet only when the total member count is at or below this value.")
     maxGroupHelp:SetTextColor(0.72, 0.72, 0.72)
 
-    timedHelp = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    timedHelp:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -105)
-    timedHelp:SetText(
-        "Sent only when a Mythic+ keystone dungeon is completed within its time limit."
-    )
-    timedHelp:SetTextColor(0.72, 0.72, 0.72)
-    timedHelp:Hide()
+    outcomeHelp = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    outcomeHelp:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -105)
+    outcomeHelp:SetTextColor(0.72, 0.72, 0.72)
+    outcomeHelp:Hide()
 
     local header = CreateFrame("Frame", nil, frame)
     header:SetSize(LIST_WIDTH, 22)
