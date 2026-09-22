@@ -1,0 +1,463 @@
+local _, KIC = ...
+
+local UI = {}
+KIC.UI = UI
+
+local WINDOW_WIDTH = 700
+local WINDOW_HEIGHT = 540
+local LIST_WIDTH = 642
+local ROW_HEIGHT = 30
+local ROW_GAP = 2
+
+local initialized = false
+local optionsFrame
+local minimapButton
+local scrollFrame
+local scrollChild
+local statusText
+local addInput
+local rows = {}
+
+local function Trim(text)
+    return (tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function Notify(message)
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("|cffffd100KIC LFG Greeter:|r " .. message)
+    end
+end
+
+local function GetDatabase()
+    return KIC.GetDatabase and KIC.GetDatabase()
+end
+
+local function UpdateStatus()
+    if not statusText then
+        return
+    end
+
+    local db = GetDatabase()
+    local enabled = 0
+
+    for _, entry in ipairs(db.greetings) do
+        if entry.enabled then
+            enabled = enabled + 1
+        end
+    end
+
+    statusText:SetText(string.format(
+        "Enabled greetings: %d / %d",
+        enabled,
+        #db.greetings
+    ))
+end
+
+local function CreateGreetingRow(index)
+    local row = CreateFrame("Frame", nil, scrollChild)
+    row:SetSize(LIST_WIDTH, ROW_HEIGHT)
+
+    local background = row:CreateTexture(nil, "BACKGROUND")
+    background:SetAllPoints()
+    row.Background = background
+
+    local number = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    number:SetPoint("LEFT", row, "LEFT", 8, 0)
+    number:SetWidth(30)
+    number:SetJustifyH("RIGHT")
+    row.Number = number
+
+    local toggle = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
+    toggle:SetSize(24, 24)
+    toggle:SetPoint("RIGHT", row, "RIGHT", -7, 0)
+    row.Toggle = toggle
+
+    local remove = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+    remove:SetSize(68, 22)
+    remove:SetPoint("RIGHT", toggle, "LEFT", -7, 0)
+    remove:SetText("Remove")
+    row.Remove = remove
+
+    local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    text:SetPoint("LEFT", number, "RIGHT", 8, 0)
+    text:SetPoint("RIGHT", remove, "LEFT", -10, 0)
+    text:SetJustifyH("LEFT")
+    text:SetWordWrap(false)
+    row.Text = text
+
+    toggle:SetScript("OnClick", function(self)
+        local db = GetDatabase()
+        local entry = db and db.greetings[self.EntryIndex]
+
+        if entry then
+            entry.enabled = self:GetChecked() and true or false
+            UpdateStatus()
+        end
+    end)
+
+    toggle:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Use this greeting")
+        GameTooltip:Show()
+    end)
+    toggle:SetScript("OnLeave", GameTooltip_Hide)
+
+    remove:SetScript("OnClick", function(self)
+        local db = GetDatabase()
+
+        if db and db.greetings[self.EntryIndex] then
+            table.remove(db.greetings, self.EntryIndex)
+            UI.Refresh()
+        end
+    end)
+
+    rows[index] = row
+    return row
+end
+
+function UI.Refresh()
+    if not optionsFrame or not scrollChild then
+        return
+    end
+
+    local db = GetDatabase()
+
+    for _, row in ipairs(rows) do
+        row:Hide()
+    end
+
+    for index, entry in ipairs(db.greetings) do
+        local row = rows[index] or CreateGreetingRow(index)
+        local y = -((index - 1) * (ROW_HEIGHT + ROW_GAP))
+        local shade = index % 2 == 0 and 0.11 or 0.07
+
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, y)
+        row.Background:SetColorTexture(shade, shade, shade, 0.92)
+        row.Number:SetText(index .. ".")
+        row.Text:SetText(entry.text)
+        row.Toggle.EntryIndex = index
+        row.Toggle:SetChecked(entry.enabled)
+        row.Remove.EntryIndex = index
+        row:Show()
+    end
+
+    local contentHeight = #db.greetings * (ROW_HEIGHT + ROW_GAP)
+    scrollChild:SetHeight(math.max(1, contentHeight))
+    UpdateStatus()
+end
+
+local function AddGreeting()
+    local text = Trim(addInput and addInput:GetText())
+
+    if text == "" then
+        Notify("Enter a greeting before adding it.")
+        return
+    end
+
+    local db = GetDatabase()
+    db.greetings[#db.greetings + 1] = {
+        text = text,
+        enabled = true,
+    }
+
+    addInput:SetText("")
+    addInput:ClearFocus()
+    UI.Refresh()
+
+    if C_Timer and C_Timer.After then
+        C_Timer.After(0, function()
+            if scrollFrame then
+                scrollFrame:SetVerticalScroll(scrollFrame:GetVerticalScrollRange())
+            end
+        end)
+    end
+end
+
+local function SaveWindowPosition()
+    if not optionsFrame then
+        return
+    end
+
+    local db = GetDatabase()
+    local point, _, relativePoint, x, y = optionsFrame:GetPoint(1)
+
+    db.window.point = point
+    db.window.relativePoint = relativePoint
+    db.window.x = x
+    db.window.y = y
+end
+
+local function RestoreWindowPosition()
+    local db = GetDatabase()
+    local window = db.window
+
+    optionsFrame:ClearAllPoints()
+
+    if type(window.point) == "string"
+        and type(window.x) == "number"
+        and type(window.y) == "number"
+    then
+        optionsFrame:SetPoint(
+            window.point,
+            UIParent,
+            window.relativePoint or window.point,
+            window.x,
+            window.y
+        )
+    else
+        optionsFrame:SetPoint("CENTER")
+    end
+end
+
+local function CreateOptionsFrame()
+    if optionsFrame then
+        return
+    end
+
+    local frame = CreateFrame(
+        "Frame",
+        "KICLFGGreeterOptionsFrame",
+        UIParent,
+        "BackdropTemplate"
+    )
+    frame:SetSize(WINDOW_WIDTH, WINDOW_HEIGHT)
+    frame:SetFrameStrata("DIALOG")
+    frame:SetToplevel(true)
+    frame:SetClampedToScreen(true)
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 16,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 },
+    })
+    frame:SetBackdropColor(0.03, 0.03, 0.03, 0.98)
+    frame:SetBackdropBorderColor(0.72, 0.58, 0.10, 1)
+    frame:SetScript("OnDragStart", function(self)
+        self:StartMoving()
+    end)
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        SaveWindowPosition()
+    end)
+    frame:SetScript("OnShow", function(self)
+        self:Raise()
+        UI.Refresh()
+    end)
+    frame:Hide()
+    optionsFrame = frame
+
+    RestoreWindowPosition()
+
+    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+    title:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -15)
+    title:SetText("KIC LFG Greeter")
+
+    local subtitle = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
+    subtitle:SetText("Choose which greetings may be sent when you join a party.")
+    subtitle:SetTextColor(0.72, 0.72, 0.72)
+
+    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
+
+    local header = CreateFrame("Frame", nil, frame)
+    header:SetSize(LIST_WIDTH, 22)
+    header:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -62)
+
+    local numberHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    numberHeader:SetPoint("LEFT", header, "LEFT", 8, 0)
+    numberHeader:SetWidth(30)
+    numberHeader:SetJustifyH("RIGHT")
+    numberHeader:SetText("#")
+
+    local textHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    textHeader:SetPoint("LEFT", numberHeader, "RIGHT", 8, 0)
+    textHeader:SetText("Greeting")
+
+    local removeHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    removeHeader:SetPoint("RIGHT", header, "RIGHT", -44, 0)
+    removeHeader:SetText("Remove")
+
+    local useHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    useHeader:SetPoint("RIGHT", header, "RIGHT", -6, 0)
+    useHeader:SetText("Use")
+
+    scrollFrame = CreateFrame(
+        "ScrollFrame",
+        "KICLFGGreeterGreetingScrollFrame",
+        frame,
+        "UIPanelScrollFrameTemplate"
+    )
+    scrollFrame:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -3)
+    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -35, 112)
+
+    scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetSize(LIST_WIDTH, 1)
+    scrollFrame:SetScrollChild(scrollChild)
+
+    local addLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    addLabel:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 18, 78)
+    addLabel:SetText("New greeting")
+
+    addInput = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
+    addInput:SetSize(550, 24)
+    addInput:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 22, 47)
+    addInput:SetAutoFocus(false)
+    addInput:SetMaxLetters(220)
+    addInput:SetScript("OnEnterPressed", AddGreeting)
+    addInput:SetScript("OnEscapePressed", function(self)
+        self:ClearFocus()
+    end)
+
+    local addButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    addButton:SetSize(92, 24)
+    addButton:SetPoint("LEFT", addInput, "RIGHT", 8, 0)
+    addButton:SetText("Add")
+    addButton:SetScript("OnClick", AddGreeting)
+
+    statusText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    statusText:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 18, 20)
+    statusText:SetTextColor(0.72, 0.72, 0.72)
+
+    UISpecialFrames[#UISpecialFrames + 1] = frame:GetName()
+end
+
+function UI.Toggle()
+    CreateOptionsFrame()
+
+    if optionsFrame:IsShown() then
+        optionsFrame:Hide()
+    else
+        optionsFrame:Show()
+    end
+end
+
+local function Atan2(y, x)
+    if math.atan2 then
+        return math.atan2(y, x)
+    end
+
+    if x > 0 then
+        return math.atan(y / x)
+    elseif x < 0 and y >= 0 then
+        return math.atan(y / x) + math.pi
+    elseif x < 0 and y < 0 then
+        return math.atan(y / x) - math.pi
+    elseif x == 0 and y > 0 then
+        return math.pi / 2
+    elseif x == 0 and y < 0 then
+        return -math.pi / 2
+    end
+
+    return 0
+end
+
+local function PositionMinimapButton()
+    if not minimapButton or not Minimap then
+        return
+    end
+
+    local db = GetDatabase()
+    local radians = math.rad(db.minimapAngle)
+    local radius = 80
+
+    minimapButton:ClearAllPoints()
+    minimapButton:SetPoint(
+        "CENTER",
+        Minimap,
+        "CENTER",
+        math.cos(radians) * radius,
+        math.sin(radians) * radius
+    )
+end
+
+local function UpdateMinimapButtonFromCursor()
+    local minimapX, minimapY = Minimap:GetCenter()
+    local cursorX, cursorY = GetCursorPosition()
+    local scale = UIParent:GetEffectiveScale()
+
+    cursorX = cursorX / scale
+    cursorY = cursorY / scale
+
+    GetDatabase().minimapAngle = math.deg(Atan2(
+        cursorY - minimapY,
+        cursorX - minimapX
+    ))
+
+    PositionMinimapButton()
+end
+
+local function CreateMinimapButton()
+    if minimapButton or not Minimap then
+        return
+    end
+
+    local button = CreateFrame("Button", "KICLFGGreeterMinimapButton", Minimap)
+    button:SetSize(32, 32)
+    button:SetFrameStrata("MEDIUM")
+    button:SetFrameLevel(8)
+    button:RegisterForClicks("LeftButtonUp")
+    button:RegisterForDrag("LeftButton")
+
+    local background = button:CreateTexture(nil, "BACKGROUND")
+    background:SetSize(20, 20)
+    background:SetPoint("CENTER")
+    background:SetTexture("Interface\\Buttons\\WHITE8X8")
+    background:SetVertexColor(0.06, 0.06, 0.06, 1)
+
+    local border = button:CreateTexture(nil, "OVERLAY")
+    border:SetSize(54, 54)
+    border:SetPoint("CENTER")
+    border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+
+    local label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    label:SetPoint("CENTER", background, "CENTER")
+    label:SetText("G")
+    label:SetTextColor(1, 0.82, 0, 1)
+
+    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetSize(22, 22)
+    highlight:SetPoint("CENTER")
+    highlight:SetTexture("Interface\\Buttons\\WHITE8X8")
+    highlight:SetVertexColor(1, 0.82, 0, 0.18)
+
+    button:SetScript("OnClick", UI.Toggle)
+    button:SetScript("OnDragStart", function(self)
+        self:SetScript("OnUpdate", UpdateMinimapButtonFromCursor)
+    end)
+    button:SetScript("OnDragStop", function(self)
+        self:SetScript("OnUpdate", nil)
+        UpdateMinimapButtonFromCursor()
+    end)
+    button:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText("KIC LFG Greeter")
+        GameTooltip:AddLine("Left-click: Open greeting settings", 1, 1, 1)
+        GameTooltip:AddLine("Drag: Move minimap button", 0.72, 0.72, 0.72)
+        GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", GameTooltip_Hide)
+
+    minimapButton = button
+    PositionMinimapButton()
+end
+
+function UI.Initialize()
+    if initialized then
+        return
+    end
+
+    initialized = true
+    CreateMinimapButton()
+end
+
+SLASH_KICLFGGREETER1 = "/kicgreet"
+SlashCmdList.KICLFGGREETER = function()
+    UI.Toggle()
+end

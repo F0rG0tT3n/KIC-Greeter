@@ -1,31 +1,86 @@
-local GREETING_DELAY_SECONDS = 1
-local GREETINGS = {
-    "Hi!",
-    "Hello!",
-    "Hey there!",
-    "Greetings!",
-    "Hello, my friend!",
-    "Welcome!",
-    "A warm welcome to you.",
-    "So lovely to see you.",
-    "It’s a joy to see you again.",
-    "What a pleasure to meet you.",
-    "I’m glad our paths crossed.",
-    "You’re a sight for sore eyes.",
-    "The day feels brighter with you here.",
-    "Welcome, dear friend.",
-    "May your day begin beautifully.",
-    "What a lovely surprise to find you here.",
-    "The world feels a little warmer now that you’re here.",
-    "Here’s to the moment that brought us together.",
-    "May this meeting be the start of something wonderful.",
-    "As the sun greets the morning, so I greet you.",
-}
+local _, KIC = ...
 
-local events = CreateFrame("Frame")
+local GREETING_DELAY_SECONDS = 1
+
+local DB
 local loggedIn = false
 local greetedCurrentGroup = false
 local groupGeneration = 0
+
+local function CopyDefaultGreetings()
+    local greetings = {}
+
+    for _, text in ipairs(KIC.DEFAULT_GREETINGS) do
+        greetings[#greetings + 1] = {
+            text = text,
+            enabled = true,
+        }
+    end
+
+    return greetings
+end
+
+local function NormalizeGreetings(greetings)
+    local normalized = {}
+
+    for _, entry in ipairs(greetings) do
+        local text
+        local enabled = true
+
+        if type(entry) == "string" then
+            text = entry
+        elseif type(entry) == "table" then
+            text = entry.text
+            enabled = entry.enabled ~= false
+        end
+
+        if type(text) == "string" and text:find("%S") then
+            normalized[#normalized + 1] = {
+                text = text,
+                enabled = enabled,
+            }
+        end
+    end
+
+    return normalized
+end
+
+
+local function InitializeDatabase()
+    if type(KICLFGGreeterDB) ~= "table" then
+        KICLFGGreeterDB = {}
+    end
+
+    DB = KICLFGGreeterDB
+
+    if type(DB.greetings) ~= "table" then
+        DB.greetings = CopyDefaultGreetings()
+    else
+        DB.greetings = NormalizeGreetings(DB.greetings)
+    end
+
+    if type(DB.window) ~= "table" then
+        DB.window = {}
+    end
+
+    DB.minimapAngle = tonumber(DB.minimapAngle) or 225
+end
+
+function KIC.GetDatabase()
+    return DB
+end
+
+local function GetEnabledGreetings()
+    local greetings = {}
+
+    for _, entry in ipairs(DB.greetings) do
+        if entry.enabled and type(entry.text) == "string" then
+            greetings[#greetings + 1] = entry.text
+        end
+    end
+
+    return greetings
+end
 
 local function IsChatMessagingLocked()
     return C_ChatInfo
@@ -50,20 +105,22 @@ local function SendGreeting(expectedGeneration)
         return
     end
 
-    -- The GROUP_FORMED and GROUP_JOINED events are not sufficient to tell who
-    -- initiated the party. At this point the roster has settled: if the player
-    -- is the leader, their invitation created the group, so stay silent.
+    -- The group events alone are not sufficient to tell who initiated the
+    -- party. Once the roster has settled, a leader is the player whose invite
+    -- formed the group, so that case remains silent.
     greetedCurrentGroup = true
 
-    if UnitIsGroupLeader("player") then
+    if UnitIsGroupLeader("player") or IsChatMessagingLocked() then
         return
     end
 
-    if IsChatMessagingLocked() then
+    local greetings = GetEnabledGreetings()
+
+    if #greetings == 0 then
         return
     end
 
-    local greeting = GREETINGS[math.random(#GREETINGS)]
+    local greeting = greetings[math.random(#greetings)]
 
     if C_ChatInfo and C_ChatInfo.SendChatMessage then
         C_ChatInfo.SendChatMessage(greeting, GetGroupChatType())
@@ -73,6 +130,7 @@ local function SendGreeting(expectedGeneration)
     end
 end
 
+local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("GROUP_FORMED")
 events:RegisterEvent("GROUP_JOINED")
@@ -80,8 +138,14 @@ events:RegisterEvent("GROUP_LEFT")
 
 events:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then
+        InitializeDatabase()
         loggedIn = true
         greetedCurrentGroup = IsInGroup()
+
+        if KIC.UI then
+            KIC.UI.Initialize()
+        end
+
         return
     end
 
