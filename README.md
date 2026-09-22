@@ -1,11 +1,12 @@
 # KIC LFG Greeter
 
 A minimal World of Warcraft Retail addon that greets a newly joined party with
-`hi`.
+one of 20 friendly messages.
 
 ## Behavior
 
-- Sends exactly one greeting when you join an existing five-player group.
+- Sends exactly one randomly selected greeting when you join an existing
+  five-player group.
 - Does not greet when your invitation causes a group to be formed and makes
   you the party leader.
 - Uses instance chat for matchmade instance groups and party chat otherwise.
@@ -27,4 +28,4 @@ AddOns list.
 ## Testing
 
 Join a party while the addon is enabled. About one second after joining, the
-addon sends `hi` to the group's chat channel.
+addon sends one of its 20 greetings to the group's chat channel.

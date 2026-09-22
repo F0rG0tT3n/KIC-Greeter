@@ -1,5 +1,26 @@
-local GREETING = "hi"
 local GREETING_DELAY_SECONDS = 1
+local GREETINGS = {
+    "Hi!",
+    "Hello!",
+    "Hey there!",
+    "Greetings!",
+    "Hello, my friend!",
+    "Welcome!",
+    "A warm welcome to you.",
+    "So lovely to see you.",
+    "It’s a joy to see you again.",
+    "What a pleasure to meet you.",
+    "I’m glad our paths crossed.",
+    "You’re a sight for sore eyes.",
+    "The day feels brighter with you here.",
+    "Welcome, dear friend.",
+    "May your day begin beautifully.",
+    "What a lovely surprise to find you here.",
+    "The world feels a little warmer now that you’re here.",
+    "Here’s to the moment that brought us together.",
+    "May this meeting be the start of something wonderful.",
+    "As the sun greets the morning, so I greet you.",
+}
 
 local events = CreateFrame("Frame")
 local loggedIn = false
@@ -42,11 +63,13 @@ local function SendGreeting(expectedGeneration)
         return
     end
 
+    local greeting = GREETINGS[math.random(#GREETINGS)]
+
     if C_ChatInfo and C_ChatInfo.SendChatMessage then
-        C_ChatInfo.SendChatMessage(GREETING, GetGroupChatType())
+        C_ChatInfo.SendChatMessage(greeting, GetGroupChatType())
     elseif SendChatMessage then
         -- Compatibility fallback for older Retail clients.
-        SendChatMessage(GREETING, GetGroupChatType())
+        SendChatMessage(greeting, GetGroupChatType())
     end
 end
 

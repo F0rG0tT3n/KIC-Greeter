@@ -1,7 +1,7 @@
 ## Interface: 120100
 ## Title: KIC LFG Greeter
-## Notes: Greets newly joined parties with a simple hi.
+## Notes: Greets newly joined parties with a random friendly message.
 ## Author: KIC
-## Version: 0.1.2
+## Version: 0.2.0
 
 KIC-LFGGreeter.lua
