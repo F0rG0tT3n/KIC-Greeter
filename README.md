@@ -15,13 +15,19 @@ randomly selected, configurable message.
 - Does not greet raids.
 - Provides a draggable minimap button that opens the greeting editor.
 - Saves enabled states, custom greetings, removals, and window positions.
+- Applies an inclusive, configurable maximum group size before greeting.
 
 ## Greeting editor
 
 Click the gold **G** button on the minimap or type `/kicgreet` to open the
-editor. Each row has a number, greeting text, **Remove** button, and **Use**
-checkbox. Add a custom greeting with the text field at the bottom. If every
-greeting is disabled or removed, the addon stays silent.
+editor. Each row has a number, greeting text, **Edit** and **Remove** buttons,
+and a **Use** checkbox. Add a custom greeting with the text field at the
+bottom. If every greeting is disabled or removed, the addon stays silent.
+
+The **Maximum group size** field at the top counts every group member,
+including you. For example, a value of `5` allows greetings in groups with up
+to five members and suppresses them in groups of six or more. Values are
+limited to the range 1–40.
 
 ## Install
 

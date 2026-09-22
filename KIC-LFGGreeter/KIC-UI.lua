@@ -4,10 +4,12 @@ local UI = {}
 KIC.UI = UI
 
 local WINDOW_WIDTH = 700
-local WINDOW_HEIGHT = 540
+local WINDOW_HEIGHT = 580
 local LIST_WIDTH = 642
 local ROW_HEIGHT = 30
 local ROW_GAP = 2
+local DEFAULT_MAX_GROUP_SIZE = 5
+local MAX_GROUP_SIZE = 40
 
 local initialized = false
 local optionsFrame
@@ -16,7 +18,9 @@ local scrollFrame
 local scrollChild
 local statusText
 local addInput
+local maxGroupInput
 local rows = {}
+local editingRow
 
 local function Trim(text)
     return (tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
@@ -30,6 +34,40 @@ end
 
 local function GetDatabase()
     return KIC.GetDatabase and KIC.GetDatabase()
+end
+
+local function StopEditingRow(row, save)
+    if not row or not row.Editing then
+        return true
+    end
+
+    if save then
+        local text = Trim(row.EditBox:GetText())
+
+        if text == "" then
+            Notify("A greeting cannot be empty.")
+            return false
+        end
+
+        local db = GetDatabase()
+        local entry = db and db.greetings[row.EntryIndex]
+
+        if entry then
+            entry.text = text
+            row.Text:SetText(text)
+        end
+    end
+
+    row.Editing = false
+    row.EditBox:Hide()
+    row.Text:Show()
+    row.Edit:SetText("Edit")
+
+    if editingRow == row then
+        editingRow = nil
+    end
+
+    return true
 end
 
 local function UpdateStatus()
@@ -78,12 +116,27 @@ local function CreateGreetingRow(index)
     remove:SetText("Remove")
     row.Remove = remove
 
+    local edit = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+    edit:SetSize(52, 22)
+    edit:SetPoint("RIGHT", remove, "LEFT", -6, 0)
+    edit:SetText("Edit")
+    row.Edit = edit
+
     local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     text:SetPoint("LEFT", number, "RIGHT", 8, 0)
-    text:SetPoint("RIGHT", remove, "LEFT", -10, 0)
+    text:SetPoint("RIGHT", edit, "LEFT", -10, 0)
     text:SetJustifyH("LEFT")
     text:SetWordWrap(false)
     row.Text = text
+
+    local editBox = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
+    editBox:SetHeight(22)
+    editBox:SetPoint("LEFT", number, "RIGHT", 12, 0)
+    editBox:SetPoint("RIGHT", edit, "LEFT", -10, 0)
+    editBox:SetAutoFocus(false)
+    editBox:SetMaxLetters(220)
+    editBox:Hide()
+    row.EditBox = editBox
 
     toggle:SetScript("OnClick", function(self)
         local db = GetDatabase()
@@ -101,6 +154,35 @@ local function CreateGreetingRow(index)
         GameTooltip:Show()
     end)
     toggle:SetScript("OnLeave", GameTooltip_Hide)
+
+    edit:SetScript("OnClick", function()
+        if row.Editing then
+            if StopEditingRow(row, true) then
+                UI.Refresh()
+            end
+            return
+        end
+
+        if editingRow and editingRow ~= row then
+            StopEditingRow(editingRow, false)
+        end
+
+        row.Editing = true
+        editingRow = row
+        row.EditBox:SetText(row.Text:GetText() or "")
+        row.Text:Hide()
+        row.EditBox:Show()
+        row.Edit:SetText("Save")
+        row.EditBox:SetFocus()
+        row.EditBox:HighlightText()
+    end)
+
+    editBox:SetScript("OnEnterPressed", function()
+        edit:Click()
+    end)
+    editBox:SetScript("OnEscapePressed", function()
+        StopEditingRow(row, false)
+    end)
 
     remove:SetScript("OnClick", function(self)
         local db = GetDatabase()
@@ -123,6 +205,7 @@ function UI.Refresh()
     local db = GetDatabase()
 
     for _, row in ipairs(rows) do
+        StopEditingRow(row, false)
         row:Hide()
     end
 
@@ -136,6 +219,7 @@ function UI.Refresh()
         row.Background:SetColorTexture(shade, shade, shade, 0.92)
         row.Number:SetText(index .. ".")
         row.Text:SetText(entry.text)
+        row.EntryIndex = index
         row.Toggle.EntryIndex = index
         row.Toggle:SetChecked(entry.enabled)
         row.Remove.EntryIndex = index
@@ -145,6 +229,27 @@ function UI.Refresh()
     local contentHeight = #db.greetings * (ROW_HEIGHT + ROW_GAP)
     scrollChild:SetHeight(math.max(1, contentHeight))
     UpdateStatus()
+end
+
+local function CommitMaxGroupSize()
+    if not maxGroupInput then
+        return
+    end
+
+    local db = GetDatabase()
+    local value = tonumber(maxGroupInput:GetText())
+
+    if not value then
+        maxGroupInput:SetText(tostring(
+            db.maxGroupSize or DEFAULT_MAX_GROUP_SIZE
+        ))
+        return
+    end
+
+    value = math.floor(value)
+    value = math.max(1, math.min(MAX_GROUP_SIZE, value))
+    db.maxGroupSize = value
+    maxGroupInput:SetText(tostring(value))
 end
 
 local function AddGreeting()
@@ -266,9 +371,31 @@ local function CreateOptionsFrame()
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
 
+    local maxGroupLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    maxGroupLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -65)
+    maxGroupLabel:SetText("Maximum group size:")
+
+    maxGroupInput = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
+    maxGroupInput:SetSize(44, 22)
+    maxGroupInput:SetPoint("LEFT", maxGroupLabel, "RIGHT", 10, 0)
+    maxGroupInput:SetAutoFocus(false)
+    maxGroupInput:SetNumeric(true)
+    maxGroupInput:SetMaxLetters(2)
+    maxGroupInput:SetText(tostring(GetDatabase().maxGroupSize))
+    maxGroupInput:SetScript("OnEnterPressed", function(self)
+        CommitMaxGroupSize()
+        self:ClearFocus()
+    end)
+    maxGroupInput:SetScript("OnEditFocusLost", CommitMaxGroupSize)
+
+    local maxGroupHelp = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    maxGroupHelp:SetPoint("LEFT", maxGroupInput, "RIGHT", 10, 0)
+    maxGroupHelp:SetText("Greet only when the total member count is at or below this value.")
+    maxGroupHelp:SetTextColor(0.72, 0.72, 0.72)
+
     local header = CreateFrame("Frame", nil, frame)
     header:SetSize(LIST_WIDTH, 22)
-    header:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -62)
+    header:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -101)
 
     local numberHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     numberHeader:SetPoint("LEFT", header, "LEFT", 8, 0)
@@ -280,8 +407,12 @@ local function CreateOptionsFrame()
     textHeader:SetPoint("LEFT", numberHeader, "RIGHT", 8, 0)
     textHeader:SetText("Greeting")
 
+    local editHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    editHeader:SetPoint("RIGHT", header, "RIGHT", -121, 0)
+    editHeader:SetText("Edit")
+
     local removeHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    removeHeader:SetPoint("RIGHT", header, "RIGHT", -44, 0)
+    removeHeader:SetPoint("RIGHT", header, "RIGHT", -43, 0)
     removeHeader:SetText("Remove")
 
     local useHeader = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")

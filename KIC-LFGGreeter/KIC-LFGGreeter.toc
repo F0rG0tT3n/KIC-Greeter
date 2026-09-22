@@ -2,7 +2,7 @@
 ## Title: KIC LFG Greeter
 ## Notes: Greets newly joined parties with a configurable random message.
 ## Author: KIC
-## Version: 0.3.0
+## Version: 0.4.0
 ## SavedVariables: KICLFGGreeterDB
 
 KIC-Data.lua

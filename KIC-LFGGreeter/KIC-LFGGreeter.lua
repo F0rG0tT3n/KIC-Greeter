@@ -1,6 +1,8 @@
 local _, KIC = ...
 
 local GREETING_DELAY_SECONDS = 1
+local DEFAULT_MAX_GROUP_SIZE = 5
+local MAX_GROUP_SIZE = 40
 
 local DB
 local loggedIn = false
@@ -63,6 +65,10 @@ local function InitializeDatabase()
         DB.window = {}
     end
 
+    DB.maxGroupSize = math.floor(
+        tonumber(DB.maxGroupSize) or DEFAULT_MAX_GROUP_SIZE
+    )
+    DB.maxGroupSize = math.max(1, math.min(MAX_GROUP_SIZE, DB.maxGroupSize))
     DB.minimapAngle = tonumber(DB.minimapAngle) or 225
 end
 
@@ -91,6 +97,8 @@ end
 local function GetGroupChatType()
     if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
         return "INSTANCE_CHAT"
+    elseif IsInRaid() then
+        return "RAID"
     end
 
     return "PARTY"
@@ -101,7 +109,7 @@ local function SendGreeting(expectedGeneration)
         return
     end
 
-    if greetedCurrentGroup or not IsInGroup() or IsInRaid() then
+    if greetedCurrentGroup or not IsInGroup() then
         return
     end
 
@@ -110,7 +118,12 @@ local function SendGreeting(expectedGeneration)
     -- formed the group, so that case remains silent.
     greetedCurrentGroup = true
 
-    if UnitIsGroupLeader("player") or IsChatMessagingLocked() then
+    local groupSize = GetNumGroupMembers()
+
+    if UnitIsGroupLeader("player")
+        or groupSize > DB.maxGroupSize
+        or IsChatMessagingLocked()
+    then
         return
     end
 
