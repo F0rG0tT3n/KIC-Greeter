@@ -19,10 +19,18 @@ local outcomeGenerations = {
 local function CopyDefaultMessages(defaults)
     local messages = {}
 
-    for _, text in ipairs(defaults) do
+    for _, default in ipairs(defaults) do
+        local text = default
+        local enabled = true
+
+        if type(default) == "table" then
+            text = default.text
+            enabled = default.enabled ~= false
+        end
+
         messages[#messages + 1] = {
             text = text,
-            enabled = true,
+            enabled = enabled,
         }
     end
 

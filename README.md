@@ -52,6 +52,6 @@ AddOns list.
 
 Join another player's party while the addon is enabled. About one second after
 joining, the addon sends one of the enabled join greetings to the group's chat
-channel. Complete a Mythic+ dungeon within its time limit to test the separate
-timed-completion message list, whose default message is `GG`. A successful Vote
-to Abandon uses its own list, whose default message is `Thanks for the run.`
+channel. A clean installation includes ten join greetings with the first five
+enabled. The timed-completion and successful-abandon lists also contain ten
+messages, with their first two and first three entries enabled respectively.
