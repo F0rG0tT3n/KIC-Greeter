@@ -49,7 +49,9 @@ World of Warcraft\_retail_\Interface\AddOns\
 Restart the game or run `/reload`, then enable **KIC LFG Greeter** in the
 AddOns list. WoW displays the Greeter beneath a **KIC** parent entry. The two
 folders must remain siblings directly inside `Interface\AddOns`; do not place
-`KIC-LFGGreeter` physically inside the `KIC` folder.
+`KIC-LFGGreeter` physically inside the `KIC` folder. The parent is an optional
+dependency: without it the Greeter still loads, but it cannot appear in the KIC
+group.
 
 ## Testing
 
