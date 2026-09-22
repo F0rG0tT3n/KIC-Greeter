@@ -2,6 +2,6 @@
 ## Title: KIC LFG Greeter
 ## Notes: Greets newly joined parties with a simple hi.
 ## Author: KIC
-## Version: 0.1.0
+## Version: 0.1.1
 
 KIC-LFGGreeter.lua

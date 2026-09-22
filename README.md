@@ -5,7 +5,8 @@ A minimal World of Warcraft Retail addon that greets a newly joined party with
 
 ## Behavior
 
-- Sends exactly one greeting when you join a new five-player group.
+- Sends exactly one greeting when you join an existing five-player group.
+- Does not greet when your invitation causes a group to be formed.
 - Uses instance chat for matchmade instance groups and party chat otherwise.
 - Does not greet when reloading the UI while already grouped.
 - Does not send during WoW's chat messaging lockdown.

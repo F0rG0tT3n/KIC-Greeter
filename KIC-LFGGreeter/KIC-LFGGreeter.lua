@@ -46,6 +46,7 @@ local function SendGreeting(expectedGeneration)
 end
 
 events:RegisterEvent("PLAYER_LOGIN")
+events:RegisterEvent("GROUP_FORMED")
 events:RegisterEvent("GROUP_JOINED")
 events:RegisterEvent("GROUP_LEFT")
 
@@ -64,6 +65,13 @@ events:SetScript("OnEvent", function(_, event)
 
     if event == "GROUP_LEFT" then
         greetedCurrentGroup = false
+        return
+    end
+
+    if event == "GROUP_FORMED" then
+        -- This player created the group by inviting someone. Suppress the
+        -- greeting even if the client also reports a join-related event.
+        greetedCurrentGroup = true
         return
     end
 
