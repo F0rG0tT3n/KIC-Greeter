@@ -40,18 +40,17 @@ Mythic+ completion messages.
 
 ## Install
 
-Copy both the `KIC` and `KIC-LFGGreeter` folders into:
+Copy the `KIC-LFGGreeter` folder into:
 
 ```text
 World of Warcraft\_retail_\Interface\AddOns\
 ```
 
 Restart the game or run `/reload`, then enable **KIC LFG Greeter** in the
-AddOns list. WoW displays the Greeter beneath a **KIC** parent entry. The two
-folders must remain siblings directly inside `Interface\AddOns`; do not place
-`KIC-LFGGreeter` physically inside the `KIC` folder. The parent is an optional
-dependency: without it the Greeter still loads, but it cannot appear in the KIC
-group.
+AddOns list. WoW displays it beneath a collapsible **KIC** category header.
+Future KIC addons can appear under the same header by declaring the same
+`Category: KIC` metadata; no separate parent addon or physical `KIC` folder is
+needed.
 
 ## Testing
 
