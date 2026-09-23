@@ -38,6 +38,22 @@ KIC.DEFAULT_TIMED_GREETINGS = {
     { text = "We came, we kicked, we timed.", enabled = false },
 }
 
+KIC.DEFAULT_OVERTIME_GREETINGS = {
+    { text = "GG, we finished!", enabled = true },
+    { text = "Key depleted, dungeon completed.", enabled = true },
+    { text = "Not timed, but we got it done.", enabled = false },
+    { text = "The timer won, but the dungeon still lost.", enabled = false },
+    { text = "Overtime, but loot is loot.", enabled = false },
+    { text = "A finish is a finish. GG!", enabled = false },
+    { text = "We crossed the line eventually. o7", enabled = false },
+    { text = "The timer left, but we stayed.", enabled = false },
+    { text = "Late to the finish, right on time for loot.", enabled = false },
+    {
+        text = "We didn't time it, but we definitely finished it.",
+        enabled = false,
+    },
+}
+
 KIC.DEFAULT_ABANDON_GREETINGS = {
     { text = "GG, we gave it a shot!", enabled = true },
     { text = "RIP key, you fought bravely.", enabled = true },

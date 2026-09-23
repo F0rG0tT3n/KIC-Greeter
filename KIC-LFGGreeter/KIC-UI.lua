@@ -13,6 +13,7 @@ local MAX_GROUP_SIZE = 40
 local TAB_JOIN = "JOIN"
 local TAB_TIMED = "TIMED"
 local TAB_ABANDON = "ABANDON"
+local TAB_OVERTIME = "OVERTIME"
 
 local TAB_CONFIG = {
     [TAB_JOIN] = {
@@ -25,6 +26,12 @@ local TAB_CONFIG = {
         addLabel = "New timed completion message",
         statusLabel = "Enabled timed messages",
         helpText = "Sent only when a Mythic+ keystone dungeon is completed within its time limit.",
+    },
+    [TAB_OVERTIME] = {
+        listKey = "overtimeGreetings",
+        addLabel = "New overtime completion message",
+        statusLabel = "Enabled overtime messages",
+        helpText = "Sent only when a Mythic+ keystone dungeon is completed after its timer expires.",
     },
     [TAB_ABANDON] = {
         listKey = "abandonGreetings",
@@ -530,6 +537,16 @@ local function CreateOptionsFrame()
         SelectTab(TAB_ABANDON)
     end)
     tabButtons[TAB_ABANDON] = abandonTab
+
+    local overtimeTab = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    overtimeTab:SetSize(162, 24)
+    overtimeTab:SetPoint("LEFT", abandonTab, "RIGHT", 6, 0)
+    overtimeTab:SetText("Overtime Mythic+")
+    AddTabSelectionIndicator(overtimeTab)
+    overtimeTab:SetScript("OnClick", function()
+        SelectTab(TAB_OVERTIME)
+    end)
+    tabButtons[TAB_OVERTIME] = overtimeTab
 
     maxGroupLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     maxGroupLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -103)

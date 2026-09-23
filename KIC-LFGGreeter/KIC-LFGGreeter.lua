@@ -13,6 +13,7 @@ local greetedCurrentGroup = false
 local groupGeneration = 0
 local outcomeGenerations = {
     timedGreetings = 0,
+    overtimeGreetings = 0,
     abandonGreetings = 0,
 }
 
@@ -79,6 +80,14 @@ local function InitializeDatabase()
         DB.timedGreetings = CopyDefaultMessages(KIC.DEFAULT_TIMED_GREETINGS)
     else
         DB.timedGreetings = NormalizeMessages(DB.timedGreetings)
+    end
+
+    if type(DB.overtimeGreetings) ~= "table" then
+        DB.overtimeGreetings = CopyDefaultMessages(
+            KIC.DEFAULT_OVERTIME_GREETINGS
+        )
+    else
+        DB.overtimeGreetings = NormalizeMessages(DB.overtimeGreetings)
     end
 
     if type(DB.abandonGreetings) ~= "table" then
@@ -227,11 +236,13 @@ local function HandleChallengeModeCompleted()
 
     local info = C_ChallengeMode.GetChallengeCompletionInfo()
 
-    if not info or not info.onTime or info.practiceRun then
+    if not info or info.practiceRun then
         return
     end
 
-    QueueOutcomeGreeting("timedGreetings")
+    QueueOutcomeGreeting(
+        info.onTime and "timedGreetings" or "overtimeGreetings"
+    )
 end
 
 local function HandleInstanceAbandonVoteFinished(votePassed)

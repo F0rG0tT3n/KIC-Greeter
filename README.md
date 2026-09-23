@@ -3,7 +3,7 @@
 ## Summary
 
 Automatically greet groups you join and send customizable messages when a
-Mythic+ keystone is timed or successfully abandoned.
+Mythic+ keystone is timed, completed overtime, or successfully abandoned.
 
 ## Description
 
@@ -11,13 +11,14 @@ KIC Greeter is a lightweight automatic group-chat assistant for World of
 Warcraft Retail.
 
 It sends friendly, configurable messages when you join an existing group,
-successfully time a Mythic+ keystone, or complete a successful Mythic+ Vote to
-Abandon. Each event has its own editable message list, and one enabled message
-is selected randomly whenever that event qualifies.
+successfully time a Mythic+ keystone, finish one after its timer expires, or
+complete a successful Mythic+ Vote to Abandon. Each event has its own editable
+message list, and one enabled message is selected randomly whenever that event
+qualifies.
 
 KIC Greeter is designed to stay predictable. It does not greet when you form a
-group by inviting somebody else, repeat a greeting after `/reload`, celebrate a
-depleted key, or react to a failed abandon vote.
+group by inviting somebody else, repeat a greeting after `/reload`, treat an
+overtime completion as a timed key, or react to a failed abandon vote.
 
 ## Join Greetings
 
@@ -59,12 +60,22 @@ When a Mythic+ keystone dungeon is completed within its time limit, KIC Greeter
 sends one random enabled message from the **Timed Mythic+** list.
 
 - Only successfully timed keystones qualify
-- Depleted keystones stay silent
 - Non-keystone and practice runs stay silent
 
 If World of Warcraft temporarily prevents chat messages when the completion
 event fires, the addon briefly retries instead of immediately losing the
 message.
+
+## Overtime Mythic+ Messages
+
+When every objective is completed but the Mythic+ timer has already expired,
+KIC Greeter sends one random enabled message from the **Overtime Mythic+**
+list.
+
+- The dungeon must be fully completed
+- The completion must be overtime
+- Practice runs stay silent
+- Overtime completions never use the Timed Mythic+ message list
 
 ## Successful Vote to Abandon Messages
 
@@ -80,11 +91,12 @@ group is removed from the dungeon.
 Click the gold **G** button on the minimap or type `/kicgreet` to open the
 editor.
 
-The interface provides three independent tabs:
+The interface provides four independent tabs:
 
 - **Join Greetings**
 - **Timed Mythic+**
 - **Abandoned Mythic+**
+- **Overtime Mythic+**
 
 Every message row includes:
 
@@ -104,6 +116,7 @@ A clean installation includes ready-to-use message lists:
 
 - 10 join greetings, with the first 5 enabled
 - 10 timed Mythic+ messages, with the first 2 enabled
+- 10 overtime Mythic+ messages, with the first 2 enabled
 - 10 successful-abandon messages, with the first 3 enabled
 
 The defaults range from short messages such as `Hi!`, `o7`, and `GG!` to more
