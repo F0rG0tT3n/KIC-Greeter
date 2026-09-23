@@ -2,7 +2,7 @@
 ## Title: KIC Greeter
 ## Notes: Automatically greets joined groups and posts configurable Mythic+ outcome messages.
 ## Author: KIC
-## Version: 0.8.4
+## Version: 1.0.0
 ## Category: KIC
 ## SavedVariables: KICLFGGreeterDB
 
