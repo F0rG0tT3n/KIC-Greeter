@@ -1,7 +1,22 @@
-# KIC LFG Greeter
+# KIC Greeter
 
-A World of Warcraft Retail addon that sends configurable random messages when
-you join a party, time a Mythic+ keystone, or successfully Vote to Abandon one.
+## Summary
+
+Automatically greet groups you join and send customizable messages when a
+Mythic+ keystone is timed or successfully abandoned.
+
+## Description
+
+KIC Greeter is a lightweight World of Warcraft Retail addon for friendly,
+automatic group chat messages. It sends one randomly selected enabled greeting
+when you join an existing group, while avoiding greetings when you form the
+group by inviting someone else.
+
+Separate editable message lists cover group joins, timed Mythic+ completions,
+and successful Vote to Abandon outcomes. Every message can be enabled, edited,
+removed, or replaced with your own text through the minimap-button interface.
+The maximum group-size setting keeps join greetings limited to the group sizes
+you choose.
 
 ## Behavior
 
@@ -46,7 +61,7 @@ Copy the `KIC-LFGGreeter` folder into:
 World of Warcraft\_retail_\Interface\AddOns\
 ```
 
-Restart the game or run `/reload`, then enable **KIC LFG Greeter** in the
+Restart the game or run `/reload`, then enable **KIC Greeter** in the
 AddOns list. WoW displays it beneath a collapsible **KIC** category header.
 Future KIC addons can appear under the same header by declaring the same
 `Category: KIC` metadata; no separate parent addon or physical `KIC` folder is

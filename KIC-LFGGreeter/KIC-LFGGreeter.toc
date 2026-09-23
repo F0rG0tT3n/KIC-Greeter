@@ -1,8 +1,8 @@
 ## Interface: 120100
-## Title: KIC LFG Greeter
-## Notes: Sends configurable group greetings for parties and Mythic+ outcomes.
+## Title: KIC Greeter
+## Notes: Automatically greets joined groups and posts configurable Mythic+ outcome messages.
 ## Author: KIC
-## Version: 0.8.3
+## Version: 0.8.4
 ## Category: KIC
 ## SavedVariables: KICLFGGreeterDB
 

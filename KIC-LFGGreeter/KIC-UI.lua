@@ -57,7 +57,7 @@ end
 
 local function Notify(message)
     if DEFAULT_CHAT_FRAME then
-        DEFAULT_CHAT_FRAME:AddMessage("|cffffd100KIC LFG Greeter:|r " .. message)
+        DEFAULT_CHAT_FRAME:AddMessage("|cffffd100KIC Greeter:|r " .. message)
     end
 end
 
@@ -472,7 +472,7 @@ local function CreateOptionsFrame()
 
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -15)
-    title:SetText("KIC LFG Greeter")
+    title:SetText("KIC Greeter")
 
     local subtitle = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
@@ -711,7 +711,7 @@ local function CreateMinimapButton()
     end)
     button:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText("KIC LFG Greeter")
+        GameTooltip:SetText("KIC Greeter")
         GameTooltip:AddLine("Left-click: Open greeting settings", 1, 1, 1)
         GameTooltip:AddLine("Drag: Move minimap button", 0.72, 0.72, 0.72)
         GameTooltip:Show()
