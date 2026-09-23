@@ -307,10 +307,19 @@ function UI.Refresh()
     end
 
     for tabKey, button in pairs(tabButtons) do
-        if tabKey == activeTab then
-            button:Disable()
-        else
-            button:Enable()
+        local isActive = tabKey == activeTab
+        local label = button:GetFontString()
+
+        button:Enable()
+        button:SetButtonState(isActive and "PUSHED" or "NORMAL", isActive)
+        button.ActiveIndicator:SetShown(isActive)
+
+        if label then
+            if isActive then
+                label:SetTextColor(1, 0.82, 0, 1)
+            else
+                label:SetTextColor(0.82, 0.82, 0.82, 1)
+            end
         end
     end
 
@@ -426,6 +435,16 @@ local function RestoreWindowPosition()
     end
 end
 
+local function AddTabSelectionIndicator(button)
+    local indicator = button:CreateTexture(nil, "OVERLAY")
+    indicator:SetColorTexture(1, 0.82, 0, 1)
+    indicator:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 4, 2)
+    indicator:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -4, 2)
+    indicator:SetHeight(3)
+    indicator:Hide()
+    button.ActiveIndicator = indicator
+end
+
 local function CreateOptionsFrame()
     if optionsFrame then
         return
@@ -486,6 +505,7 @@ local function CreateOptionsFrame()
     joinTab:SetSize(132, 24)
     joinTab:SetPoint("TOPLEFT", frame, "TOPLEFT", 18, -61)
     joinTab:SetText("Join Greetings")
+    AddTabSelectionIndicator(joinTab)
     joinTab:SetScript("OnClick", function()
         SelectTab(TAB_JOIN)
     end)
@@ -495,6 +515,7 @@ local function CreateOptionsFrame()
     timedTab:SetSize(142, 24)
     timedTab:SetPoint("LEFT", joinTab, "RIGHT", 6, 0)
     timedTab:SetText("Timed Mythic+")
+    AddTabSelectionIndicator(timedTab)
     timedTab:SetScript("OnClick", function()
         SelectTab(TAB_TIMED)
     end)
@@ -504,6 +525,7 @@ local function CreateOptionsFrame()
     abandonTab:SetSize(162, 24)
     abandonTab:SetPoint("LEFT", timedTab, "RIGHT", 6, 0)
     abandonTab:SetText("Abandoned Mythic+")
+    AddTabSelectionIndicator(abandonTab)
     abandonTab:SetScript("OnClick", function()
         SelectTab(TAB_ABANDON)
     end)
