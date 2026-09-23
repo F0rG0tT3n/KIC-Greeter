@@ -7,70 +7,144 @@ Mythic+ keystone is timed or successfully abandoned.
 
 ## Description
 
-KIC Greeter is a lightweight World of Warcraft Retail addon for friendly,
-automatic group chat messages. It sends one randomly selected enabled greeting
-when you join an existing group, while avoiding greetings when you form the
-group by inviting someone else.
+KIC Greeter is a lightweight automatic group-chat assistant for World of
+Warcraft Retail.
 
-Separate editable message lists cover group joins, timed Mythic+ completions,
-and successful Vote to Abandon outcomes. Every message can be enabled, edited,
-removed, or replaced with your own text through the minimap-button interface.
-The maximum group-size setting keeps join greetings limited to the group sizes
-you choose.
+It sends friendly, configurable messages when you join an existing group,
+successfully time a Mythic+ keystone, or complete a successful Mythic+ Vote to
+Abandon. Each event has its own editable message list, and one enabled message
+is selected randomly whenever that event qualifies.
 
-## Behavior
+KIC Greeter is designed to stay predictable. It does not greet when you form a
+group by inviting somebody else, repeat a greeting after `/reload`, celebrate a
+depleted key, or react to a failed abandon vote.
 
-- Sends exactly one randomly selected greeting when you join an existing group
-  whose member count is at or below your configured maximum.
-- Does not greet when your invitation causes a group to be formed and makes
-  you the party leader.
-- Uses instance chat for matchmade instance groups, raid chat for raids, and
-  party chat otherwise.
-- Does not greet when reloading the UI while already grouped.
-- Does not send during WoW's chat messaging lockdown.
-- Sends one random enabled timed-completion message after a Mythic+ dungeon is
-  completed within its time limit. Depleted keys and practice runs stay silent.
-- Briefly retries Mythic+ outcome messages if chat is still locked when the
-  relevant event fires.
-- Sends one random enabled abandon message only when a Mythic+ Vote to Abandon
-  succeeds. Failed votes stay silent.
-- Provides a draggable minimap button that opens the message editor.
-- Saves enabled states, custom messages, removals, and window positions.
+## Join Greetings
+
+KIC Greeter sends exactly one random enabled greeting when you join another
+player's group.
+
+- Joining an existing party can trigger a greeting
+- Joining a raid can trigger a greeting when it is within your size limit
+- Inviting somebody into your own group does not trigger a greeting
+- Reloading the UI while already grouped does not trigger another greeting
+- Only one message is sent for each qualifying group join
+
+### Maximum Group Size
+
+The configurable **Maximum group size** setting controls which joined groups
+receive a greeting.
+
+- The count includes every group member, including you
+- A greeting is allowed when the current group size is equal to or below the
+  configured limit
+- Larger groups stay silent
+- Valid values range from `1` to `40`
+- The clean-install default is `4`
+
+For example, a maximum size of `5` allows greetings in groups with up to five
+members and suppresses them in groups of six or more.
+
+### Automatic Chat Channel
+
+Messages use the appropriate group channel automatically:
+
+- Instance chat for matchmade instance groups
+- Raid chat for raids
+- Party chat for normal parties
+
+## Timed Mythic+ Messages
+
+When a Mythic+ keystone dungeon is completed within its time limit, KIC Greeter
+sends one random enabled message from the **Timed Mythic+** list.
+
+- Only successfully timed keystones qualify
+- Depleted keystones stay silent
+- Non-keystone and practice runs stay silent
+
+If World of Warcraft temporarily prevents chat messages when the completion
+event fires, the addon briefly retries instead of immediately losing the
+message.
+
+## Successful Vote to Abandon Messages
+
+KIC Greeter can also react when a Mythic+ Vote to Abandon succeeds and the
+group is removed from the dungeon.
+
+- One random enabled message is selected from the **Abandoned Mythic+** list
+- Failed or cancelled votes stay silent
+- Leaving a dungeon normally does not count as a successful abandon vote
 
 ## Message editor
 
 Click the gold **G** button on the minimap or type `/kicgreet` to open the
-editor. Use the **Join Greetings**, **Timed Mythic+**, and **Abandoned Mythic+**
-tabs to maintain each message list independently. Every row has a number,
-message text, **Edit** and **Remove** buttons, and a **Use** checkbox. Add a
-custom message with the text field at the bottom. If every message in a tab is
-disabled or removed, that feature stays silent.
+editor.
 
-On the **Join Greetings** tab, the **Maximum group size** field counts every
-group member, including you. Its clean-install default is `4`, which allows
-greetings in groups with up to four members and suppresses them in groups of
-five or more.
-Values are limited to the range 1–40. This limit does not apply to timed
-Mythic+ completion messages.
+The interface provides three independent tabs:
 
-## Install
+- **Join Greetings**
+- **Timed Mythic+**
+- **Abandoned Mythic+**
 
-Copy the `KIC-LFGGreeter` folder into:
+Every message row includes:
 
-```text
-World of Warcraft\_retail_\Interface\AddOns\
-```
+- A visible row number
+- The complete message text
+- An **Edit** button
+- A **Remove** button
+- A **Use** checkbox
 
-Restart the game or run `/reload`, then enable **KIC Greeter** in the
-AddOns list. WoW displays it beneath a collapsible **KIC** category header.
-Future KIC addons can appear under the same header by declaring the same
-`Category: KIC` metadata; no separate parent addon or physical `KIC` folder is
-needed.
+Disabled messages receive a grey overlay so their state is immediately clear.
+New custom messages can be added from the text field at the bottom of each tab.
+If every message in a tab is disabled or removed, that event remains silent.
 
-## Testing
+## Default Message Configuration
 
-Join another player's party while the addon is enabled. About one second after
-joining, the addon sends one of the enabled join greetings to the group's chat
-channel. A clean installation includes ten join greetings with the first five
-enabled. The timed-completion and successful-abandon lists also contain ten
-messages, with their first two and first three entries enabled respectively.
+A clean installation includes ready-to-use message lists:
+
+- 10 join greetings, with the first 5 enabled
+- 10 timed Mythic+ messages, with the first 2 enabled
+- 10 successful-abandon messages, with the first 3 enabled
+
+The defaults range from short messages such as `Hi!`, `o7`, and `GG!` to more
+playful group and Mythic+ lines. Every default can be edited, disabled, or
+removed.
+
+## Minimap and Commands
+
+- Click the draggable gold **G** minimap button to open or close the editor
+- Drag the button to reposition it around the minimap
+- Type `/kicgreet` to open the same configuration window
+- Window and minimap-button positions are saved between sessions
+
+## Saved Settings
+
+KIC Greeter saves:
+
+- Enabled and disabled message states
+- Edited default messages
+- Added custom messages
+- Removed messages
+- Maximum group size
+- Window position
+- Minimap-button position
+
+## Safe and Predictable Behavior
+
+- No message is sent when every entry for an event is disabled
+- Chat-lockdown periods are respected
+- Mythic+ outcome messages use short, bounded retries when chat is temporarily
+  unavailable
+- Pending messages are cancelled when the relevant group state changes
+- Existing users keep their saved message lists and settings after updates
+
+## Lightweight by Design
+
+- No required external libraries
+- No replacement Group Finder interface
+- No automatic invites, applications, or group management
+- No whispers, guild messages, or public-channel spam
+- Focused only on configurable group greetings and Mythic+ outcome messages
+
+KIC Greeter keeps group introductions and end-of-run messages friendly without
+making you type the same lines every time.
