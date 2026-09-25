@@ -10,6 +10,8 @@ local ROW_HEIGHT = 30
 local ROW_GAP = 2
 local DEFAULT_MAX_GROUP_SIZE = 4
 local MAX_GROUP_SIZE = 40
+local DEFAULT_MESSAGE_DELAY_SECONDS = 1
+local MAX_MESSAGE_DELAY_SECONDS = 60
 local TAB_JOIN = "JOIN"
 local TAB_TIMED = "TIMED"
 local TAB_ABANDON = "ABANDON"
@@ -53,6 +55,7 @@ local addLabel
 local maxGroupInput
 local maxGroupLabel
 local maxGroupHelp
+local messageDelayInput
 local outcomeHelp
 local tabButtons = {}
 local rows = {}
@@ -272,6 +275,10 @@ function UI.Refresh()
     local db = GetDatabase()
     local entries, config = GetActiveList()
 
+    if messageDelayInput then
+        messageDelayInput:SetText(tostring(db.messageDelaySeconds))
+    end
+
     for _, row in ipairs(rows) do
         StopEditingRow(row, false)
         row:Hide()
@@ -353,6 +360,27 @@ local function CommitMaxGroupSize()
     value = math.max(1, math.min(MAX_GROUP_SIZE, value))
     db.maxGroupSize = value
     maxGroupInput:SetText(tostring(value))
+end
+
+local function CommitMessageDelay()
+    if not messageDelayInput then
+        return
+    end
+
+    local db = GetDatabase()
+    local value = tonumber(messageDelayInput:GetText())
+
+    if not value then
+        messageDelayInput:SetText(tostring(
+            db.messageDelaySeconds or DEFAULT_MESSAGE_DELAY_SECONDS
+        ))
+        return
+    end
+
+    value = math.floor(value)
+    value = math.max(0, math.min(MAX_MESSAGE_DELAY_SECONDS, value))
+    db.messageDelaySeconds = value
+    messageDelayInput:SetText(tostring(value))
 end
 
 local function AddGreeting()
@@ -507,6 +535,38 @@ local function CreateOptionsFrame()
 
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
+
+    messageDelayInput = CreateFrame(
+        "EditBox",
+        nil,
+        frame,
+        "InputBoxTemplate"
+    )
+    messageDelayInput:SetSize(44, 22)
+    messageDelayInput:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -45, -14)
+    messageDelayInput:SetAutoFocus(false)
+    messageDelayInput:SetNumeric(true)
+    messageDelayInput:SetMaxLetters(2)
+    messageDelayInput:SetText(tostring(GetDatabase().messageDelaySeconds))
+    messageDelayInput:SetScript("OnEnterPressed", function(self)
+        CommitMessageDelay()
+        self:ClearFocus()
+    end)
+    messageDelayInput:SetScript("OnEditFocusLost", CommitMessageDelay)
+
+    local messageDelayLabel = frame:CreateFontString(
+        nil,
+        "OVERLAY",
+        "GameFontNormal"
+    )
+    messageDelayLabel:SetPoint(
+        "RIGHT",
+        messageDelayInput,
+        "LEFT",
+        -8,
+        0
+    )
+    messageDelayLabel:SetText("Message delay (sec):")
 
     local joinTab = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     joinTab:SetSize(132, 24)

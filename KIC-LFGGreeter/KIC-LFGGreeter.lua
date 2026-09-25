@@ -1,7 +1,8 @@
 local _, KIC = ...
 
-local GREETING_DELAY_SECONDS = 1
-local OUTCOME_GREETING_DELAY_SECONDS = 1
+local DEFAULT_MESSAGE_DELAY_SECONDS = 1
+local MAX_MESSAGE_DELAY_SECONDS = 60
+local RESTORED_GROUP_CHECK_SECONDS = 10
 local CHAT_UNLOCK_RETRY_SECONDS = 0.5
 local CHAT_UNLOCK_MAX_ATTEMPTS = 10
 local DEFAULT_MAX_GROUP_SIZE = 4
@@ -10,6 +11,7 @@ local MAX_GROUP_SIZE = 40
 local DB
 local loggedIn = false
 local greetedCurrentGroup = false
+local restoredGroupMembers
 local groupGeneration = 0
 local outcomeGenerations = {
     timedGreetings = 0,
@@ -104,11 +106,96 @@ local function InitializeDatabase()
         tonumber(DB.maxGroupSize) or DEFAULT_MAX_GROUP_SIZE
     )
     DB.maxGroupSize = math.max(1, math.min(MAX_GROUP_SIZE, DB.maxGroupSize))
+    DB.messageDelaySeconds = math.floor(
+        tonumber(DB.messageDelaySeconds) or DEFAULT_MESSAGE_DELAY_SECONDS
+    )
+    DB.messageDelaySeconds = math.max(
+        0,
+        math.min(MAX_MESSAGE_DELAY_SECONDS, DB.messageDelaySeconds)
+    )
     DB.minimapAngle = tonumber(DB.minimapAngle) or 225
 end
 
 function KIC.GetDatabase()
     return DB
+end
+
+local function GetOtherGroupMemberGUIDs()
+    local guids = {}
+
+    if not IsInGroup() then
+        return guids
+    end
+
+    local playerGUID = UnitGUID("player")
+    local prefix = IsInRaid() and "raid" or "party"
+    local count = IsInRaid()
+        and GetNumGroupMembers()
+        or math.max(0, GetNumGroupMembers() - 1)
+
+    for index = 1, count do
+        local guid = UnitGUID(prefix .. index)
+
+        if guid and guid ~= playerGUID then
+            guids[#guids + 1] = guid
+        end
+    end
+
+    return guids
+end
+
+local function ClearRestoredGroupSnapshot()
+    restoredGroupMembers = nil
+
+    if DB then
+        DB.logoutPlayerGUID = nil
+        DB.logoutGroupMembers = nil
+    end
+end
+
+local function CaptureLogoutGroupSnapshot()
+    if not DB or not IsInGroup() then
+        ClearRestoredGroupSnapshot()
+        return
+    end
+
+    local members = {}
+
+    for _, guid in ipairs(GetOtherGroupMemberGUIDs()) do
+        members[guid] = true
+    end
+
+    if not next(members) then
+        ClearRestoredGroupSnapshot()
+        return
+    end
+
+    DB.logoutPlayerGUID = UnitGUID("player")
+    DB.logoutGroupMembers = members
+end
+
+local function RestoredGroupMatchesCurrentGroup()
+    if not restoredGroupMembers or not IsInGroup() then
+        return false
+    end
+
+    for _, guid in ipairs(GetOtherGroupMemberGUIDs()) do
+        if restoredGroupMembers[guid] then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function MarkRestoredGroupAsGreeted()
+    if not RestoredGroupMatchesCurrentGroup() then
+        return false
+    end
+
+    greetedCurrentGroup = true
+    ClearRestoredGroupSnapshot()
+    return true
 end
 
 local function GetEnabledMessages(messages)
@@ -156,6 +243,12 @@ local function SendGreeting(expectedGeneration)
     if greetedCurrentGroup or not IsInGroup() then
         return
     end
+
+    if MarkRestoredGroupAsGreeted() then
+        return
+    end
+
+    ClearRestoredGroupSnapshot()
 
     -- The group events alone are not sufficient to tell who initiated the
     -- party. Once the roster has settled, a leader is the player whose invite
@@ -215,7 +308,7 @@ local function QueueOutcomeGreeting(listKey)
     local expectedGeneration = outcomeGenerations[listKey]
 
     if C_Timer and C_Timer.After then
-        C_Timer.After(OUTCOME_GREETING_DELAY_SECONDS, function()
+        C_Timer.After(DB.messageDelaySeconds, function()
             SendOutcomeGreeting(listKey, expectedGeneration, 0)
         end)
     else
@@ -253,9 +346,11 @@ end
 
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
+events:RegisterEvent("PLAYER_LOGOUT")
 events:RegisterEvent("GROUP_FORMED")
 events:RegisterEvent("GROUP_JOINED")
 events:RegisterEvent("GROUP_LEFT")
+events:RegisterEvent("GROUP_ROSTER_UPDATE")
 events:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 events:RegisterEvent("INSTANCE_ABANDON_VOTE_FINISHED")
 
@@ -265,6 +360,24 @@ events:SetScript("OnEvent", function(_, event, ...)
         loggedIn = true
         greetedCurrentGroup = IsInGroup()
 
+        if DB.logoutPlayerGUID == UnitGUID("player")
+            and type(DB.logoutGroupMembers) == "table"
+        then
+            restoredGroupMembers = DB.logoutGroupMembers
+        else
+            ClearRestoredGroupSnapshot()
+        end
+
+        if greetedCurrentGroup then
+            ClearRestoredGroupSnapshot()
+        elseif restoredGroupMembers and C_Timer and C_Timer.After then
+            C_Timer.After(RESTORED_GROUP_CHECK_SECONDS, function()
+                if not MarkRestoredGroupAsGreeted() then
+                    ClearRestoredGroupSnapshot()
+                end
+            end)
+        end
+
         if KIC.UI then
             KIC.UI.Initialize()
         end
@@ -273,6 +386,16 @@ events:SetScript("OnEvent", function(_, event, ...)
     end
 
     if not loggedIn then
+        return
+    end
+
+    if event == "PLAYER_LOGOUT" then
+        CaptureLogoutGroupSnapshot()
+        return
+    end
+
+    if event == "GROUP_ROSTER_UPDATE" then
+        MarkRestoredGroupAsGreeted()
         return
     end
 
@@ -294,6 +417,7 @@ events:SetScript("OnEvent", function(_, event, ...)
 
     if event == "GROUP_LEFT" then
         greetedCurrentGroup = false
+        ClearRestoredGroupSnapshot()
         return
     end
 
@@ -301,10 +425,14 @@ events:SetScript("OnEvent", function(_, event, ...)
         return
     end
 
+    if MarkRestoredGroupAsGreeted() then
+        return
+    end
+
     local expectedGeneration = groupGeneration
 
     if C_Timer and C_Timer.After then
-        C_Timer.After(GREETING_DELAY_SECONDS, function()
+        C_Timer.After(DB.messageDelaySeconds, function()
             SendGreeting(expectedGeneration)
         end)
     else

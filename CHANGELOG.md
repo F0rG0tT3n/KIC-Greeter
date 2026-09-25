@@ -1,5 +1,25 @@
 # KIC Greeter Changelog
 
+## 1.1.3
+
+### Fixed
+
+- Prevented join greetings from being sent again when logging out and back into the same group or reloading the UI.
+- A genuinely different group joined after login is still greeted normally.
+
+## 1.1.2
+
+### Added
+
+- Added a persistent **Message delay (sec)** field at the top of the settings window.
+- The configurable 0-60 second delay applies to join greetings, timed and overtime Mythic+ messages, and successful abandon messages.
+
+## 1.1.1
+
+### Changed
+
+- Added an addon-list icon matching the gold **G** minimap button.
+
 ## 1.1.0
 
 ### Added
