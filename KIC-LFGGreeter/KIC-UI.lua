@@ -772,7 +772,7 @@ local function CreateMinimapButton()
     end
 
     local button = CreateFrame("Button", "KICLFGGreeterMinimapButton", Minimap)
-    button:SetSize(32, 32)
+    button:SetSize(31, 31)
     button:SetFrameStrata("MEDIUM")
     button:SetFrameLevel(8)
     button:RegisterForClicks("LeftButtonUp")
@@ -780,13 +780,14 @@ local function CreateMinimapButton()
 
     local background = button:CreateTexture(nil, "BACKGROUND")
     background:SetSize(20, 20)
-    background:SetPoint("CENTER")
+    background:SetPoint("TOPLEFT", button, "TOPLEFT", 7, -5)
     background:SetTexture("Interface\\Buttons\\WHITE8X8")
     background:SetVertexColor(0.06, 0.06, 0.06, 1)
+    button.icon = background
 
     local border = button:CreateTexture(nil, "OVERLAY")
-    border:SetSize(54, 54)
-    border:SetPoint("CENTER")
+    border:SetSize(53, 53)
+    border:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 0)
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
 
     local label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -796,7 +797,7 @@ local function CreateMinimapButton()
 
     local highlight = button:CreateTexture(nil, "HIGHLIGHT")
     highlight:SetSize(22, 22)
-    highlight:SetPoint("CENTER")
+    highlight:SetPoint("CENTER", background, "CENTER")
     highlight:SetTexture("Interface\\Buttons\\WHITE8X8")
     highlight:SetVertexColor(1, 0.82, 0, 0.18)
 

@@ -1,5 +1,11 @@
 # KIC Greeter Changelog
 
+## 1.1.4
+
+### Fixed
+
+- Fixed the minimap button artwork alignment, including compatibility with UI addons that manage minimap buttons.
+
 ## 1.1.3
 
 ### Fixed
